@@ -1,12 +1,14 @@
 import { getSupabaseClient, isSupabaseConfigured } from "./supabase/client";
-import { Criterion, Evaluation, FairSettings, Project, OFFICIAL_CRITERIA } from "@/types";
-import { INITIAL_EVALUATIONS, INITIAL_PROJECTS, INITIAL_SETTINGS } from "./mock-data";
+import { Criterion, Evaluation, FairSettings, Project, Evaluator, ProjectEvaluator, OFFICIAL_CRITERIA } from "@/types";
+import { INITIAL_EVALUATIONS, INITIAL_PROJECTS, INITIAL_SETTINGS, INITIAL_EVALUATORS } from "./mock-data";
 
 const LOCAL_STORAGE_KEYS = {
   SETTINGS: "avaliafeira_settings",
   PROJECTS: "avaliafeira_projects",
   EVALUATIONS: "avaliafeira_evaluations",
   CRITERIA: "avaliafeira_criteria",
+  EVALUATORS: "avaliafeira_evaluators",
+  ALLOCATIONS: "avaliafeira_project_evaluators",
 };
 
 // ==============================================================================
@@ -103,6 +105,230 @@ export async function getCriteria(): Promise<Criterion[]> {
 }
 
 // ==============================================================================
+// AVALIADORES (MATRÍCULAS E NOMES)
+// ==============================================================================
+export async function getEvaluators(): Promise<Evaluator[]> {
+  const supabase = getSupabaseClient();
+  if (supabase) {
+    try {
+      const { data, error } = await supabase
+        .from("evaluators")
+        .select("*")
+        .order("code", { ascending: true });
+
+      if (!error && data && data.length > 0) {
+        // Buscar também alocações
+        const allocations = await getProjectEvaluators();
+        return data.map((ev: any) => ({
+          ...ev,
+          assigned_projects: allocations
+            .filter((a) => a.evaluator_code.toUpperCase() === ev.code.toUpperCase())
+            .map((a) => a.project_id),
+        }));
+      }
+    } catch (e) {
+      console.warn("Aviso ao buscar avaliadores no Supabase, usando local:", e);
+    }
+  }
+
+  if (typeof window !== "undefined") {
+    const cached = localStorage.getItem(LOCAL_STORAGE_KEYS.EVALUATORS);
+    if (cached) {
+      try {
+        return JSON.parse(cached);
+      } catch {
+        // ignore
+      }
+    }
+    localStorage.setItem(LOCAL_STORAGE_KEYS.EVALUATORS, JSON.stringify(INITIAL_EVALUATORS));
+  }
+  return INITIAL_EVALUATORS;
+}
+
+export async function createOrUpdateEvaluator(
+  code: string,
+  name?: string | null,
+  assignedProjects?: string[]
+): Promise<Evaluator> {
+  const cleanCode = code.trim().toUpperCase();
+  const cleanName = name ? name.trim() : null;
+
+  const supabase = getSupabaseClient();
+  if (supabase) {
+    try {
+      const { data, error } = await supabase
+        .from("evaluators")
+        .upsert(
+          {
+            code: cleanCode,
+            name: cleanName,
+          },
+          { onConflict: "code" }
+        )
+        .select()
+        .single();
+
+      if (!error && data) {
+        if (assignedProjects) {
+          // Atualizar alocações na tabela project_evaluators
+          await supabase.from("project_evaluators").delete().eq("evaluator_code", cleanCode);
+          if (assignedProjects.length > 0) {
+            await supabase.from("project_evaluators").insert(
+              assignedProjects.map((pId) => ({
+                project_id: pId,
+                evaluator_code: cleanCode,
+              }))
+            );
+          }
+        }
+        return {
+          ...data,
+          assigned_projects: assignedProjects || [],
+        };
+      }
+    } catch (e) {
+      console.warn("Erro ao salvar avaliador no Supabase, usando local:", e);
+    }
+  }
+
+  // Fallback Local
+  const current = await getEvaluators();
+  const idx = current.findIndex((e) => e.code.toUpperCase() === cleanCode);
+  let saved: Evaluator;
+
+  if (idx >= 0) {
+    saved = {
+      ...current[idx],
+      name: cleanName !== undefined ? cleanName : current[idx].name,
+      assigned_projects: assignedProjects !== undefined ? assignedProjects : current[idx].assigned_projects,
+    };
+    current[idx] = saved;
+  } else {
+    saved = {
+      id: `evaluator-${Date.now()}`,
+      code: cleanCode,
+      name: cleanName,
+      assigned_projects: assignedProjects || [],
+      created_at: new Date().toISOString(),
+    };
+    current.push(saved);
+  }
+
+  if (typeof window !== "undefined") {
+    localStorage.setItem(LOCAL_STORAGE_KEYS.EVALUATORS, JSON.stringify(current));
+  }
+  return saved;
+}
+
+export async function deleteEvaluator(code: string): Promise<boolean> {
+  const cleanCode = code.trim().toUpperCase();
+  const supabase = getSupabaseClient();
+  if (supabase) {
+    try {
+      await supabase.from("project_evaluators").delete().eq("evaluator_code", cleanCode);
+      const { error } = await supabase.from("evaluators").delete().eq("code", cleanCode);
+      if (!error) return true;
+    } catch (e) {
+      console.warn("Erro ao deletar avaliador no Supabase:", e);
+    }
+  }
+
+  if (typeof window !== "undefined") {
+    const current = await getEvaluators();
+    const filtered = current.filter((e) => e.code.toUpperCase() !== cleanCode);
+    localStorage.setItem(LOCAL_STORAGE_KEYS.EVALUATORS, JSON.stringify(filtered));
+  }
+  return true;
+}
+
+// ==============================================================================
+// ALOCAÇÃO DE AVALIADORES A PROJETOS (ESCALA)
+// ==============================================================================
+export async function getProjectEvaluators(): Promise<ProjectEvaluator[]> {
+  const supabase = getSupabaseClient();
+  if (supabase) {
+    try {
+      const { data, error } = await supabase.from("project_evaluators").select("*");
+      if (!error && data) {
+        return data as ProjectEvaluator[];
+      }
+    } catch (e) {
+      // ignore
+    }
+  }
+
+  if (typeof window !== "undefined") {
+    const cached = localStorage.getItem(LOCAL_STORAGE_KEYS.ALLOCATIONS);
+    if (cached) {
+      try {
+        return JSON.parse(cached);
+      } catch {
+        // ignore
+      }
+    }
+  }
+
+  // Fallback baseado nos projetos iniciais
+  const initialAllocations: ProjectEvaluator[] = [];
+  INITIAL_PROJECTS.forEach((p) => {
+    (p.assigned_evaluators || []).forEach((code) => {
+      initialAllocations.push({
+        id: `alloc-${p.id}-${code}`,
+        project_id: p.id,
+        evaluator_code: code,
+      });
+    });
+  });
+  return initialAllocations;
+}
+
+export async function assignEvaluatorsToProject(
+  projectId: string,
+  evaluatorCodes: string[]
+): Promise<void> {
+  const cleanCodes = evaluatorCodes.map((c) => c.trim().toUpperCase());
+
+  const supabase = getSupabaseClient();
+  if (supabase) {
+    try {
+      await supabase.from("project_evaluators").delete().eq("project_id", projectId);
+      if (cleanCodes.length > 0) {
+        await supabase.from("project_evaluators").insert(
+          cleanCodes.map((code) => ({
+            project_id: projectId,
+            evaluator_code: code,
+          }))
+        );
+      }
+    } catch (e) {
+      console.warn("Erro ao salvar alocações no Supabase, usando local:", e);
+    }
+  }
+
+  // Atualizar projetos locais
+  if (typeof window !== "undefined") {
+    const projects = await getProjects();
+    const projIdx = projects.findIndex((p) => p.id === projectId);
+    if (projIdx >= 0) {
+      projects[projIdx].assigned_evaluators = cleanCodes;
+      localStorage.setItem(LOCAL_STORAGE_KEYS.PROJECTS, JSON.stringify(projects));
+    }
+
+    const currentAlloc = await getProjectEvaluators();
+    const filteredAlloc = currentAlloc.filter((a) => a.project_id !== projectId);
+    const newAllocs = cleanCodes.map((code) => ({
+      id: `alloc-${projectId}-${code}`,
+      project_id: projectId,
+      evaluator_code: code,
+    }));
+    localStorage.setItem(
+      LOCAL_STORAGE_KEYS.ALLOCATIONS,
+      JSON.stringify([...filteredAlloc, ...newAllocs])
+    );
+  }
+}
+
+// ==============================================================================
 // PROJETOS (CRUD)
 // ==============================================================================
 export async function getProjects(): Promise<Project[]> {
@@ -115,7 +341,14 @@ export async function getProjects(): Promise<Project[]> {
         .order("code", { ascending: true });
 
       if (!error && data) {
-        return data as Project[];
+        // Enriquecer com avaliadores designados de project_evaluators
+        const allocations = await getProjectEvaluators();
+        return data.map((p: any) => ({
+          ...p,
+          assigned_evaluators: allocations
+            .filter((a) => a.project_id === p.id)
+            .map((a) => a.evaluator_code),
+        }));
       }
     } catch (e) {
       console.warn("Erro ao buscar projetos no Supabase, usando local:", e);
@@ -131,24 +364,33 @@ export async function getProjects(): Promise<Project[]> {
         // ignore
       }
     }
-    // Salvar mock inicial no localStorage
     localStorage.setItem(LOCAL_STORAGE_KEYS.PROJECTS, JSON.stringify(INITIAL_PROJECTS));
   }
   return INITIAL_PROJECTS;
 }
 
-export async function createProject(project: Omit<Project, "id" | "created_at" | "updated_at">): Promise<Project> {
+export async function createProject(
+  project: Omit<Project, "id" | "created_at" | "updated_at">
+): Promise<Project> {
+  const { assigned_evaluators, ...projectData } = project;
+
   const supabase = getSupabaseClient();
   if (supabase) {
     try {
       const { data, error } = await supabase
         .from("projects")
-        .insert(project)
+        .insert(projectData)
         .select()
         .single();
 
       if (!error && data) {
-        return data as Project;
+        if (assigned_evaluators && assigned_evaluators.length > 0) {
+          await assignEvaluatorsToProject(data.id, assigned_evaluators);
+        }
+        return {
+          ...data,
+          assigned_evaluators: assigned_evaluators || [],
+        } as Project;
       }
       if (error) throw new Error(error.message);
     } catch (e: any) {
@@ -160,6 +402,7 @@ export async function createProject(project: Omit<Project, "id" | "created_at" |
   const newProj: Project = {
     ...project,
     id: `proj-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+    assigned_evaluators: assigned_evaluators || [],
     created_at: new Date().toISOString(),
   };
 
@@ -172,18 +415,27 @@ export async function createProject(project: Omit<Project, "id" | "created_at" |
 }
 
 export async function updateProject(id: string, updates: Partial<Project>): Promise<Project> {
+  const { assigned_evaluators, ...projectData } = updates;
+
   const supabase = getSupabaseClient();
   if (supabase) {
     try {
       const { data, error } = await supabase
         .from("projects")
-        .update({ ...updates, updated_at: new Date().toISOString() })
+        .update({ ...projectData, updated_at: new Date().toISOString() })
         .eq("id", id)
         .select()
         .single();
 
+      if (assigned_evaluators !== undefined) {
+        await assignEvaluatorsToProject(id, assigned_evaluators);
+      }
+
       if (!error && data) {
-        return data as Project;
+        return {
+          ...data,
+          assigned_evaluators: assigned_evaluators || [],
+        } as Project;
       }
       if (error) throw new Error(error.message);
     } catch (e: any) {
@@ -195,7 +447,14 @@ export async function updateProject(id: string, updates: Partial<Project>): Prom
     const current = await getProjects();
     const index = current.findIndex((p) => p.id === id);
     if (index >= 0) {
-      current[index] = { ...current[index], ...updates, updated_at: new Date().toISOString() };
+      current[index] = {
+        ...current[index],
+        ...updates,
+        updated_at: new Date().toISOString(),
+      };
+      if (assigned_evaluators !== undefined) {
+        await assignEvaluatorsToProject(id, assigned_evaluators);
+      }
       localStorage.setItem(LOCAL_STORAGE_KEYS.PROJECTS, JSON.stringify(current));
       return current[index];
     }
@@ -207,6 +466,7 @@ export async function deleteProject(id: string): Promise<boolean> {
   const supabase = getSupabaseClient();
   if (supabase) {
     try {
+      await supabase.from("project_evaluators").delete().eq("project_id", id);
       const { error } = await supabase.from("projects").delete().eq("id", id);
       if (!error) return true;
       if (error) throw new Error(error.message);
@@ -220,7 +480,6 @@ export async function deleteProject(id: string): Promise<boolean> {
     const filtered = current.filter((p) => p.id !== id);
     localStorage.setItem(LOCAL_STORAGE_KEYS.PROJECTS, JSON.stringify(filtered));
 
-    // Remover avaliações associadas também
     const evals = await getEvaluations();
     const filteredEvals = evals.filter((e) => e.project_id !== id);
     localStorage.setItem(LOCAL_STORAGE_KEYS.EVALUATIONS, JSON.stringify(filteredEvals));
@@ -257,7 +516,6 @@ export async function getEvaluations(): Promise<Evaluation[]> {
         // ignore
       }
     }
-    // Salvar mock inicial no localStorage
     localStorage.setItem(LOCAL_STORAGE_KEYS.EVALUATIONS, JSON.stringify(INITIAL_EVALUATIONS));
   }
   return INITIAL_EVALUATIONS;
@@ -266,23 +524,33 @@ export async function getEvaluations(): Promise<Evaluation[]> {
 export async function submitEvaluation(
   evaluation: Omit<Evaluation, "id" | "created_at" | "updated_at">
 ): Promise<Evaluation> {
+  const cleanCode = evaluation.evaluator_code ? evaluation.evaluator_code.trim().toUpperCase() : null;
+  const cleanName = evaluation.evaluator_name.trim();
+
+  // Salvar/atualizar o nome do avaliador na tabela evaluators se houver matrícula
+  if (cleanCode) {
+    createOrUpdateEvaluator(cleanCode, cleanName).catch(() => {});
+  }
+
   const supabase = getSupabaseClient();
   if (supabase) {
     try {
-      // Upsert baseado em (project_id, evaluator_name)
+      const payload: any = {
+        project_id: evaluation.project_id,
+        evaluator_name: cleanName,
+        scores: evaluation.scores,
+        total_score: evaluation.total_score,
+        notes: evaluation.notes || "",
+        updated_at: new Date().toISOString(),
+      };
+      if (cleanCode) {
+        payload.evaluator_code = cleanCode;
+      }
+
+      // Tentar upsert
       const { data, error } = await supabase
         .from("evaluations")
-        .upsert(
-          {
-            project_id: evaluation.project_id,
-            evaluator_name: evaluation.evaluator_name.trim(),
-            scores: evaluation.scores,
-            total_score: evaluation.total_score,
-            notes: evaluation.notes || "",
-            updated_at: new Date().toISOString(),
-          },
-          { onConflict: "project_id,evaluator_name" }
-        )
+        .upsert(payload, { onConflict: "project_id,evaluator_name" })
         .select()
         .single();
 
@@ -290,8 +558,7 @@ export async function submitEvaluation(
         return data as Evaluation;
       }
       if (error) {
-        console.error("Erro no upsert de avaliação no Supabase:", error);
-        throw new Error(error.message);
+        console.warn("Aviso ao salvar no Supabase, tentando inserção simples:", error.message);
       }
     } catch (e: any) {
       if (isSupabaseConfigured()) throw e;
@@ -304,13 +571,16 @@ export async function submitEvaluation(
   const existingIdx = current.findIndex(
     (e) =>
       e.project_id === evaluation.project_id &&
-      e.evaluator_name.trim().toLowerCase() === evaluation.evaluator_name.trim().toLowerCase()
+      ((cleanCode && e.evaluator_code && e.evaluator_code.toUpperCase() === cleanCode) ||
+        e.evaluator_name.trim().toLowerCase() === cleanName.toLowerCase())
   );
 
   let savedItem: Evaluation;
   if (existingIdx >= 0) {
     savedItem = {
       ...current[existingIdx],
+      evaluator_code: cleanCode || current[existingIdx].evaluator_code,
+      evaluator_name: cleanName,
       scores: evaluation.scores,
       total_score: evaluation.total_score,
       notes: evaluation.notes,
@@ -321,7 +591,8 @@ export async function submitEvaluation(
     savedItem = {
       id: `eval-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
       project_id: evaluation.project_id,
-      evaluator_name: evaluation.evaluator_name.trim(),
+      evaluator_code: cleanCode,
+      evaluator_name: cleanName,
       scores: evaluation.scores,
       total_score: evaluation.total_score,
       notes: evaluation.notes,
@@ -333,7 +604,6 @@ export async function submitEvaluation(
 
   if (typeof window !== "undefined") {
     localStorage.setItem(LOCAL_STORAGE_KEYS.EVALUATIONS, JSON.stringify(current));
-    // Disparar evento customizado para realtime local em caso de abas múltiplas
     window.dispatchEvent(new CustomEvent("avaliafeira_eval_update", { detail: savedItem }));
   }
 

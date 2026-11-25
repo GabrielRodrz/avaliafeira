@@ -12,6 +12,8 @@ import {
   Sparkles,
   FileText,
   AlertTriangle,
+  Hash,
+  BookmarkCheck,
 } from "lucide-react";
 import EvaluatorHeader from "@/components/evaluator/EvaluatorHeader";
 import EvaluatorNameModal from "@/components/evaluator/EvaluatorNameModal";
@@ -23,6 +25,7 @@ import {
   getEvaluations,
   submitEvaluation,
   getFairSettings,
+  createOrUpdateEvaluator,
 } from "@/lib/data-service";
 import { Project, Criterion, Evaluation, FairSettings, OFFICIAL_CRITERIA } from "@/types";
 
@@ -31,6 +34,7 @@ export default function ProjectEvaluationPage() {
   const router = useRouter();
   const projectId = params?.id as string;
 
+  const [evaluatorCode, setEvaluatorCode] = useState<string>("");
   const [evaluatorName, setEvaluatorName] = useState<string>("");
   const [isNameModalOpen, setIsNameModalOpen] = useState(false);
   const [project, setProject] = useState<Project | null>(null);
@@ -43,11 +47,13 @@ export default function ProjectEvaluationPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
 
-  // 1. Carregar nome do avaliador
+  // 1. Carregar matrícula e nome do avaliador
   useEffect(() => {
+    const savedCode = localStorage.getItem("avaliafeira_evaluator_code") || "";
     const savedName = localStorage.getItem("avaliafeira_evaluator_name") || "";
+    setEvaluatorCode(savedCode);
     setEvaluatorName(savedName);
-    if (!savedName) {
+    if (!savedCode || !savedName) {
       setIsNameModalOpen(true);
     }
   }, []);
@@ -74,12 +80,15 @@ export default function ProjectEvaluationPage() {
         setSettings(settingsData);
 
         // Se o avaliador já tiver avaliado este projeto, pré-preencher
+        const savedCode = localStorage.getItem("avaliafeira_evaluator_code") || "";
         const savedName = localStorage.getItem("avaliafeira_evaluator_name") || "";
-        if (savedName && currentProj) {
+
+        if (currentProj && (savedCode || savedName)) {
           const existingEval = evalsData.find(
             (e) =>
               e.project_id === currentProj.id &&
-              e.evaluator_name.trim().toLowerCase() === savedName.trim().toLowerCase()
+              ((savedCode && e.evaluator_code && e.evaluator_code.toUpperCase() === savedCode.toUpperCase()) ||
+                (savedName && e.evaluator_name.trim().toLowerCase() === savedName.trim().toLowerCase()))
           );
 
           if (existingEval) {
@@ -118,15 +127,23 @@ export default function ProjectEvaluationPage() {
       .length;
   }, [scores]);
 
-  const handleSaveName = (newName: string) => {
+  const handleSaveIdentification = async (newCode: string, newName: string) => {
+    setEvaluatorCode(newCode);
     setEvaluatorName(newName);
+    localStorage.setItem("avaliafeira_evaluator_code", newCode);
     localStorage.setItem("avaliafeira_evaluator_name", newName);
     setIsNameModalOpen(false);
+
+    try {
+      await createOrUpdateEvaluator(newCode, newName);
+    } catch (e) {
+      console.warn(e);
+    }
   };
 
   const handleSubmit = async () => {
     if (!project) return;
-    if (!evaluatorName) {
+    if (!evaluatorCode || !evaluatorName) {
       setIsNameModalOpen(true);
       return;
     }
@@ -140,6 +157,7 @@ export default function ProjectEvaluationPage() {
     try {
       await submitEvaluation({
         project_id: project.id,
+        evaluator_code: evaluatorCode.trim().toUpperCase(),
         evaluator_name: evaluatorName.trim(),
         scores,
         total_score: partialScore,
@@ -180,23 +198,30 @@ export default function ProjectEvaluationPage() {
     );
   }
 
+  const isAssigned =
+    evaluatorCode &&
+    project.assigned_evaluators &&
+    project.assigned_evaluators.some((c) => c.toUpperCase() === evaluatorCode.toUpperCase());
+
   return (
     <div className="min-h-screen bg-slate-50 pb-32">
       {/* Cabeçalho */}
       <EvaluatorHeader
         evaluatorName={evaluatorName}
+        evaluatorCode={evaluatorCode}
         onOpenNameModal={() => setIsNameModalOpen(true)}
         fairName={settings?.name}
         edition={settings?.edition}
       />
 
-      {/* Modal de Nome */}
+      {/* Modal de Matrícula e Nome */}
       <EvaluatorNameModal
         isOpen={isNameModalOpen}
+        currentCode={evaluatorCode}
         currentName={evaluatorName}
-        onSave={handleSaveName}
+        onSave={handleSaveIdentification}
         onCancel={() => setIsNameModalOpen(false)}
-        canCancel={Boolean(evaluatorName)}
+        canCancel={Boolean(evaluatorCode && evaluatorName)}
       />
 
       <main className="mx-auto max-w-4xl px-4 pt-5 sm:px-6">
@@ -212,10 +237,10 @@ export default function ProjectEvaluationPage() {
         </div>
 
         {/* Card do Projeto em Avaliação */}
-        <section className="mb-6 rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 shadow-sm">
+        <section className="mb-6 rounded-3xl border border-slate-200 bg-white p-5 sm:p-6 shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="rounded-lg bg-teal-600 px-2.5 py-1 text-xs font-black text-white">
+              <span className="rounded-lg bg-teal-700 px-2.5 py-1 text-xs font-black text-white">
                 {project.code}
               </span>
               {project.stand && (
@@ -227,6 +252,13 @@ export default function ProjectEvaluationPage() {
               <span className="rounded-lg bg-teal-50 px-2.5 py-1 text-xs font-semibold text-teal-800 border border-teal-200">
                 {project.category}
               </span>
+
+              {isAssigned && (
+                <span className="flex items-center gap-1 rounded-full bg-teal-100 border border-teal-300 px-2.5 py-0.5 text-[11px] font-black text-teal-900">
+                  <BookmarkCheck className="h-3 w-3 text-teal-700" />
+                  <span>Designado para Você</span>
+                </span>
+              )}
             </div>
 
             {isEditing && (
@@ -261,7 +293,7 @@ export default function ProjectEvaluationPage() {
         </section>
 
         {/* Instrução da Escala Oficial */}
-        <div className="mb-5 flex items-start gap-3 rounded-xl bg-teal-50 border border-teal-200 p-4 text-xs sm:text-sm text-teal-900">
+        <div className="mb-5 flex items-start gap-3 rounded-2xl bg-teal-50 border border-teal-200 p-4 text-xs sm:text-sm text-teal-900">
           <Sparkles className="h-5 w-5 text-teal-600 shrink-0 mt-0.5" />
           <div>
             <span className="font-bold">Escala Oficial de Pontuação Estrita:</span>
@@ -285,7 +317,7 @@ export default function ProjectEvaluationPage() {
         </section>
 
         {/* Campo Opcional de Observações */}
-        <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <section className="mt-6 rounded-3xl border border-slate-200 bg-white p-5 sm:p-6 shadow-sm">
           <div className="flex items-center gap-2 mb-2">
             <FileText className="h-5 w-5 text-teal-600" />
             <h3 className="text-sm font-bold text-slate-900">
@@ -300,7 +332,7 @@ export default function ProjectEvaluationPage() {
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             placeholder="Ex: Excelente desenvoltura dos estudantes, protótipo funcional bem demonstrado..."
-            className="w-full rounded-xl border border-slate-200 p-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-teal-600 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
+            className="w-full rounded-2xl border border-slate-200 p-3.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-teal-600 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
           />
         </section>
       </main>
@@ -318,7 +350,7 @@ export default function ProjectEvaluationPage() {
       {/* Modal de Sucesso / Confirmação */}
       {showSuccessModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs">
-          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl text-center">
+          <div className="w-full max-w-md rounded-3xl bg-white p-6 sm:p-7 shadow-2xl text-center">
             <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 mb-4">
               <CheckCircle2 className="h-10 w-10" />
             </div>
@@ -328,10 +360,10 @@ export default function ProjectEvaluationPage() {
             </h3>
 
             <p className="mt-2 text-sm text-slate-600">
-              Sua pontuação para o projeto <strong>{project.code}</strong> foi registrada no sistema.
+              A nota do projeto <strong>{project.code}</strong> foi registrada para a matrícula <strong>{evaluatorCode}</strong> ({evaluatorName}).
             </p>
 
-            <div className="my-5 rounded-xl bg-teal-50 border border-teal-200 p-4">
+            <div className="my-5 rounded-2xl bg-teal-50 border border-teal-200 p-4">
               <span className="text-xs font-semibold text-teal-800">Nota Final Atribuída</span>
               <div className="text-3xl font-black text-teal-900 mt-1">
                 {partialScore} <span className="text-sm font-bold text-teal-600">/ 100 pts</span>
@@ -340,9 +372,9 @@ export default function ProjectEvaluationPage() {
 
             <button
               onClick={() => router.push("/avaliar")}
-              className="w-full rounded-xl bg-teal-600 py-3 text-sm font-bold text-white shadow-md hover:bg-teal-700 transition active:scale-98"
+              className="w-full rounded-2xl bg-teal-600 py-3 text-sm font-bold text-white shadow-md hover:bg-teal-700 transition active:scale-98 cursor-pointer"
             >
-              Retornar à Lista de Projetos
+              Retornar à Minha Lista de Projetos
             </button>
           </div>
         </div>

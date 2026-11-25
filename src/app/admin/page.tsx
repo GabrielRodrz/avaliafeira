@@ -10,6 +10,7 @@ import AdminsManagement from "@/components/admin/AdminsManagement";
 import SettingsAndSharing from "@/components/admin/SettingsAndSharing";
 import ChangePasswordModal from "@/components/admin/ChangePasswordModal";
 import PrintClassification from "@/components/admin/PrintClassification";
+import EvaluatorsManagement from "@/components/admin/EvaluatorsManagement";
 
 import {
   getProjects,
@@ -21,11 +22,14 @@ import {
   getCriteria,
   getFairSettings,
   saveFairSettings,
+  getEvaluators,
+  createOrUpdateEvaluator,
+  deleteEvaluator,
   subscribeToRealtimeEvaluations,
 } from "@/lib/data-service";
 import { computeOfficialRanking } from "@/lib/ranking";
 import { getSupabaseClient, isSupabaseConfigured } from "@/lib/supabase/client";
-import { Project, Evaluation, Criterion, FairSettings, OFFICIAL_CRITERIA } from "@/types";
+import { Project, Evaluation, Criterion, FairSettings, Evaluator, OFFICIAL_CRITERIA } from "@/types";
 
 export default function AdminPage() {
   // Estado de Autenticação
@@ -45,6 +49,7 @@ export default function AdminPage() {
   // Dados do Sistema
   const [projects, setProjects] = useState<Project[]>([]);
   const [evaluations, setEvaluations] = useState<Evaluation[]>([]);
+  const [evaluators, setEvaluators] = useState<Evaluator[]>([]);
   const [criteria, setCriteria] = useState<Criterion[]>(OFFICIAL_CRITERIA);
   const [settings, setSettings] = useState<FairSettings | null>(null);
   const [isLoadingData, setIsLoadingData] = useState<boolean>(false);
@@ -101,16 +106,18 @@ export default function AdminPage() {
   const loadAllData = useCallback(async () => {
     setIsLoadingData(true);
     try {
-      const [pData, eData, cData, sData] = await Promise.all([
+      const [pData, eData, cData, sData, evList] = await Promise.all([
         getProjects(),
         getEvaluations(),
         getCriteria(),
         getFairSettings(),
+        getEvaluators(),
       ]);
       setProjects(pData);
       setEvaluations(eData);
       if (cData && cData.length > 0) setCriteria(cData);
       setSettings(sData);
+      setEvaluators(evList);
     } catch (err) {
       console.error("Erro ao carregar dados administrativos:", err);
     } finally {
@@ -174,6 +181,20 @@ export default function AdminPage() {
 
   const handleDeleteEvaluation = async (evalId: string) => {
     await deleteEvaluation(evalId);
+    await loadAllData();
+  };
+
+  const handleCreateOrUpdateEvaluator = async (
+    code: string,
+    name?: string | null,
+    assignedProjects?: string[]
+  ) => {
+    await createOrUpdateEvaluator(code, name, assignedProjects);
+    await loadAllData();
+  };
+
+  const handleDeleteEvaluator = async (code: string) => {
+    await deleteEvaluator(code);
     await loadAllData();
   };
 
@@ -244,9 +265,20 @@ export default function AdminPage() {
         {currentTab === "projects" && (
           <ProjectsCrud
             projects={projects}
+            evaluators={evaluators}
             onCreateProject={handleCreateProject}
             onUpdateProject={handleUpdateProject}
             onDeleteProject={handleDeleteProject}
+          />
+        )}
+
+        {currentTab === "evaluators" && (
+          <EvaluatorsManagement
+            evaluators={evaluators}
+            projects={projects}
+            evaluations={evaluations}
+            onCreateOrUpdateEvaluator={handleCreateOrUpdateEvaluator}
+            onDeleteEvaluator={handleDeleteEvaluator}
           />
         )}
 

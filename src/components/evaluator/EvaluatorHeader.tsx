@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { User, RefreshCw, Shield, Award } from "lucide-react";
+import { User, RefreshCw, Shield, Award, Hash } from "lucide-react";
 
 interface EvaluatorHeaderProps {
   evaluatorName: string;
+  evaluatorCode?: string;
   onOpenNameModal: () => void;
   fairName?: string;
   edition?: string;
@@ -12,6 +13,7 @@ interface EvaluatorHeaderProps {
 
 export default function EvaluatorHeader({
   evaluatorName,
+  evaluatorCode,
   onOpenNameModal,
   fairName = "AvaliaFeira",
   edition = "2026",
@@ -41,15 +43,20 @@ export default function EvaluatorHeader({
         </div>
 
         <div className="flex items-center gap-2 sm:gap-3">
-          {evaluatorName ? (
+          {evaluatorCode || evaluatorName ? (
             <button
               onClick={onOpenNameModal}
-              title="Clique para alterar seu nome de avaliador"
+              title="Clique para alterar sua matrícula ou nome"
               className="flex items-center gap-2 rounded-xl bg-slate-100 hover:bg-slate-200/80 border border-slate-200 px-3 py-1.5 text-xs sm:text-sm font-semibold text-slate-800 transition active:scale-95"
             >
+              {evaluatorCode && (
+                <span className="rounded-md bg-teal-600 px-1.5 py-0.5 text-[10px] font-extrabold text-white">
+                  {evaluatorCode}
+                </span>
+              )}
               <User className="h-4 w-4 text-teal-600" />
-              <span className="max-w-[120px] sm:max-w-[180px] truncate">
-                {evaluatorName}
+              <span className="max-w-[110px] sm:max-w-[170px] truncate">
+                {evaluatorName || "Identificado"}
               </span>
               <RefreshCw className="h-3 w-3 text-slate-400" />
             </button>

@@ -7,6 +7,7 @@ import {
   FolderKanban,
   Scale,
   Users,
+  UserCheck,
   Settings,
   LogOut,
   ExternalLink,
@@ -14,7 +15,7 @@ import {
   KeyRound,
 } from "lucide-react";
 
-export type AdminTab = "rankings" | "projects" | "criteria" | "admins" | "settings";
+export type AdminTab = "rankings" | "projects" | "evaluators" | "criteria" | "admins" | "settings";
 
 interface AdminHeaderProps {
   currentTab: AdminTab;
@@ -38,6 +39,7 @@ export default function AdminHeader({
   const tabs: { id: AdminTab; label: string; icon: any }[] = [
     { id: "rankings", label: "Classificação & Pódio", icon: Trophy },
     { id: "projects", label: "Projetos", icon: FolderKanban },
+    { id: "evaluators", label: "Avaliadores & Escala", icon: UserCheck },
     { id: "criteria", label: "Critérios & Escala", icon: Scale },
     { id: "admins", label: "Administradores", icon: Users },
     { id: "settings", label: "Configurações & Relatórios", icon: Settings },

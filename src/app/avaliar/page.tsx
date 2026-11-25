@@ -14,43 +14,60 @@ import {
   MapPin,
   Clock,
   Award,
+  Hash,
+  BookmarkCheck,
+  AlertCircle,
 } from "lucide-react";
 import EvaluatorHeader from "@/components/evaluator/EvaluatorHeader";
 import EvaluatorNameModal from "@/components/evaluator/EvaluatorNameModal";
-import { getProjects, getEvaluations, getFairSettings, subscribeToRealtimeEvaluations } from "@/lib/data-service";
-import { Project, Evaluation, FairSettings } from "@/types";
+import {
+  getProjects,
+  getEvaluations,
+  getFairSettings,
+  getEvaluators,
+  createOrUpdateEvaluator,
+  subscribeToRealtimeEvaluations,
+} from "@/lib/data-service";
+import { Project, Evaluation, FairSettings, Evaluator } from "@/types";
 
 export default function EvaluatorProjectsPage() {
+  const [evaluatorCode, setEvaluatorCode] = useState<string>("");
   const [evaluatorName, setEvaluatorName] = useState<string>("");
   const [isNameModalOpen, setIsNameModalOpen] = useState(false);
   const [projects, setProjects] = useState<Project[]>([]);
   const [evaluations, setEvaluations] = useState<Evaluation[]>([]);
+  const [evaluators, setEvaluators] = useState<Evaluator[]>([]);
   const [settings, setSettings] = useState<FairSettings | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
-  const [filterEvaluated, setFilterEvaluated] = useState<"all" | "evaluated" | "pending">("all");
+  const [filterMode, setFilterMode] = useState<"assigned" | "pending" | "evaluated" | "all">("assigned");
   const [isLoading, setIsLoading] = useState(true);
 
-  // Carregar nome do avaliador do localStorage
+  // Carregar dados de identificação do localStorage
   useEffect(() => {
+    const savedCode = localStorage.getItem("avaliafeira_evaluator_code") || "";
     const savedName = localStorage.getItem("avaliafeira_evaluator_name") || "";
+    setEvaluatorCode(savedCode);
     setEvaluatorName(savedName);
-    if (!savedName) {
+
+    if (!savedCode || !savedName) {
       setIsNameModalOpen(true);
     }
   }, []);
 
-  // Carregar dados
+  // Carregar dados da Feira
   const loadData = async () => {
     try {
-      const [pData, eData, sData] = await Promise.all([
+      const [pData, eData, sData, evList] = await Promise.all([
         getProjects(),
         getEvaluations(),
         getFairSettings(),
+        getEvaluators(),
       ]);
       setProjects(pData);
       setEvaluations(eData);
       setSettings(sData);
+      setEvaluators(evList);
     } catch (err) {
       console.error("Erro ao carregar dados dos projetos:", err);
     } finally {
@@ -66,25 +83,57 @@ export default function EvaluatorProjectsPage() {
     return () => unsubscribe();
   }, []);
 
-  const handleSaveName = (newName: string) => {
+  const handleSaveIdentification = async (newCode: string, newName: string) => {
+    setEvaluatorCode(newCode);
     setEvaluatorName(newName);
+    localStorage.setItem("avaliafeira_evaluator_code", newCode);
     localStorage.setItem("avaliafeira_evaluator_name", newName);
     setIsNameModalOpen(false);
+
+    // Salvar/atualizar no backend
+    try {
+      await createOrUpdateEvaluator(newCode, newName);
+      await loadData();
+    } catch (e) {
+      console.warn(e);
+    }
   };
 
-  // Mapear avaliações deste avaliador por project_id
+  // Mapear avaliações deste avaliador (por matrícula ou por nome)
   const myEvaluationsMap = useMemo(() => {
     const map = new Map<string, Evaluation>();
-    if (!evaluatorName) return map;
+    if (!evaluatorCode && !evaluatorName) return map;
+
     evaluations.forEach((e) => {
-      if (e.evaluator_name.trim().toLowerCase() === evaluatorName.trim().toLowerCase()) {
+      const matchCode =
+        evaluatorCode && e.evaluator_code && e.evaluator_code.toUpperCase() === evaluatorCode.toUpperCase();
+      const matchName =
+        evaluatorName && e.evaluator_name && e.evaluator_name.trim().toLowerCase() === evaluatorName.trim().toLowerCase();
+
+      if (matchCode || matchName) {
         map.set(e.project_id, e);
       }
     });
     return map;
-  }, [evaluations, evaluatorName]);
+  }, [evaluations, evaluatorCode, evaluatorName]);
 
-  // Lista única de categorias
+  // Verificar quais projetos estão designados para esta matrícula
+  const isProjectAssignedToMe = (p: Project): boolean => {
+    if (!evaluatorCode) return false;
+    const assigned = p.assigned_evaluators || [];
+    return assigned.some((code) => code.toUpperCase() === evaluatorCode.toUpperCase());
+  };
+
+  // Contadores
+  const assignedProjects = useMemo(() => {
+    return projects.filter(isProjectAssignedToMe);
+  }, [projects, evaluatorCode]);
+
+  const totalAssigned = assignedProjects.length;
+  const totalEvaluatedByMe = myEvaluationsMap.size;
+  const totalProjects = projects.length;
+
+  // Categorias
   const categories = useMemo(() => {
     const set = new Set<string>();
     projects.forEach((p) => {
@@ -93,7 +142,7 @@ export default function EvaluatorProjectsPage() {
     return Array.from(set);
   }, [projects]);
 
-  // Filtragem
+  // Filtragem final
   const filteredProjects = useMemo(() => {
     return projects.filter((p) => {
       const matchSearch =
@@ -106,74 +155,94 @@ export default function EvaluatorProjectsPage() {
 
       const matchCategory = selectedCategory === "all" || p.category === selectedCategory;
 
-      const hasEvaluated = myEvaluationsMap.has(p.id);
-      const matchEvalFilter =
-        filterEvaluated === "all" ||
-        (filterEvaluated === "evaluated" && hasEvaluated) ||
-        (filterEvaluated === "pending" && !hasEvaluated);
+      const isAssigned = isProjectAssignedToMe(p);
+      const isEvaluated = myEvaluationsMap.has(p.id);
 
-      return matchSearch && matchCategory && matchEvalFilter;
+      let matchFilter = true;
+      if (filterMode === "assigned") {
+        matchFilter = isAssigned;
+      } else if (filterMode === "pending") {
+        matchFilter = isAssigned ? !isEvaluated : !isEvaluated;
+      } else if (filterMode === "evaluated") {
+        matchFilter = isEvaluated;
+      } else if (filterMode === "all") {
+        matchFilter = true;
+      }
+
+      return matchSearch && matchCategory && matchFilter;
     });
-  }, [projects, searchQuery, selectedCategory, filterEvaluated, myEvaluationsMap]);
-
-  const totalEvaluatedByMe = myEvaluationsMap.size;
-  const totalProjects = projects.length;
+  }, [projects, searchQuery, selectedCategory, filterMode, evaluatorCode, myEvaluationsMap]);
 
   return (
     <div className="min-h-screen bg-slate-50 pb-16">
       {/* Cabeçalho */}
       <EvaluatorHeader
         evaluatorName={evaluatorName}
+        evaluatorCode={evaluatorCode}
         onOpenNameModal={() => setIsNameModalOpen(true)}
         fairName={settings?.name}
         edition={settings?.edition}
       />
 
-      {/* Modal de Nome do Avaliador */}
+      {/* Modal de Matrícula e Nome */}
       <EvaluatorNameModal
         isOpen={isNameModalOpen}
+        currentCode={evaluatorCode}
         currentName={evaluatorName}
-        onSave={handleSaveName}
+        onSave={handleSaveIdentification}
         onCancel={() => setIsNameModalOpen(false)}
-        canCancel={Boolean(evaluatorName)}
+        canCancel={Boolean(evaluatorCode && evaluatorName)}
+        availableEvaluators={evaluators}
       />
 
-      {/* Conteúdo Principal */}
       <main className="mx-auto max-w-5xl px-4 pt-6 sm:px-6">
-        {/* Banner do Avaliador e Progresso */}
-        <section className="mb-6 rounded-2xl bg-linear-to-r from-teal-700 via-teal-800 to-slate-900 p-5 sm:p-6 text-white shadow-xl">
+        {/* Banner do Avaliador com Matrícula e Escala */}
+        <section className="mb-6 rounded-3xl bg-linear-to-r from-teal-800 via-teal-900 to-slate-900 p-6 text-white shadow-xl">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <div className="inline-flex items-center gap-1.5 rounded-full bg-teal-500/20 px-3 py-1 text-xs font-semibold text-teal-200 backdrop-blur-xs">
-                <Sparkles className="h-3.5 w-3.5" />
-                <span>Portal Oficial do Jurado</span>
+              <div className="inline-flex items-center gap-2 rounded-full bg-teal-500/20 px-3 py-1 text-xs font-semibold text-teal-200 backdrop-blur-xs border border-teal-400/20">
+                <Hash className="h-3.5 w-3.5 text-teal-300" />
+                <span>Matrícula: <strong>{evaluatorCode || "Não informada"}</strong></span>
               </div>
-              <h1 className="mt-2 text-xl sm:text-2xl font-black tracking-tight text-white">
-                Bem-vindo(a), {evaluatorName || "Avaliador(a)"}!
+
+              <h1 className="mt-2.5 text-xl sm:text-2xl font-black tracking-tight text-white">
+                Olá, {evaluatorName || "Avaliador(a)"}!
               </h1>
               <p className="mt-1 text-xs sm:text-sm text-teal-100/90 leading-relaxed max-w-xl">
-                Selecione um projeto para lançar as notas nos 10 critérios oficiais. Suas notas são salvas com segurança em tempo real.
+                {totalAssigned > 0 ? (
+                  <>
+                    Você possui <strong>{totalAssigned} projetos designados</strong> para avaliar nesta feira. Veja abaixo a sua escala de estandes.
+                  </>
+                ) : (
+                  <>
+                    Nenhum projeto específico está alocado para sua matrícula no momento. Você pode navegar por todos os projetos da feira.
+                  </>
+                )}
               </p>
             </div>
 
-            {/* Contador de Progresso */}
-            <div className="shrink-0 rounded-xl bg-white/10 p-3.5 backdrop-blur-md border border-white/10 sm:text-right">
-              <span className="text-[11px] font-semibold uppercase tracking-wider text-teal-200">
-                Seu Desempenho
+            {/* Contador de Escala / Desempenho */}
+            <div className="shrink-0 rounded-2xl bg-white/10 p-4 backdrop-blur-md border border-white/10 sm:text-right">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-teal-200">
+                Sua Escala de Avaliação
               </span>
               <div className="mt-1 flex items-baseline gap-1.5 sm:justify-end">
-                <span className="text-2xl sm:text-3xl font-black text-white">
+                <span className="text-3xl font-black text-white">
                   {totalEvaluatedByMe}
                 </span>
                 <span className="text-sm font-semibold text-teal-200">
-                  / {totalProjects} avaliados
+                  / {totalAssigned > 0 ? totalAssigned : totalProjects} concluídos
                 </span>
               </div>
-              <div className="mt-2 h-1.5 w-full bg-white/20 rounded-full overflow-hidden">
+              <div className="mt-2.5 h-2 w-full bg-white/20 rounded-full overflow-hidden">
                 <div
-                  className="h-full bg-teal-300 transition-all duration-300 rounded-full"
+                  className="h-full bg-emerald-400 transition-all duration-300 rounded-full"
                   style={{
-                    width: `${totalProjects > 0 ? (totalEvaluatedByMe / totalProjects) * 100 : 0}%`,
+                    width: `${
+                      totalAssigned > 0
+                        ? Math.min(100, (totalEvaluatedByMe / totalAssigned) * 100)
+                        : (totalEvaluatedByMe / Math.max(1, totalProjects)) * 100
+                    }%`,
                   }}
                 />
               </div>
@@ -189,38 +258,57 @@ export default function EvaluatorProjectsPage() {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Buscar por código (ex: PROJ-01), título, estande, aluno ou orientador..."
+              placeholder="Buscar por código (PROJ-01), título, estande, aluno ou orientador..."
               className="w-full rounded-2xl border border-slate-200 bg-white py-3.5 pl-11 pr-4 text-sm font-medium text-slate-900 placeholder:text-slate-400 shadow-xs focus:border-teal-600 focus:outline-none focus:ring-2 focus:ring-teal-500/20 transition"
             />
           </div>
 
-          {/* Filtros de Categoria e Status */}
+          {/* Filtros: Abas de Escala */}
           <div className="flex flex-wrap items-center gap-2">
-            {/* Filtro de Status de Avaliação */}
-            <div className="flex rounded-xl bg-slate-200/70 p-1 text-xs font-bold text-slate-600">
+            <div className="flex flex-wrap rounded-xl bg-slate-200/80 p-1 text-xs font-bold text-slate-700">
               <button
-                onClick={() => setFilterEvaluated("all")}
-                className={`rounded-lg px-3 py-1.5 transition ${
-                  filterEvaluated === "all" ? "bg-white text-teal-800 shadow-xs" : "hover:text-slate-900"
+                onClick={() => setFilterMode("assigned")}
+                className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 transition ${
+                  filterMode === "assigned"
+                    ? "bg-teal-700 text-white shadow-xs"
+                    : "hover:text-slate-900"
                 }`}
               >
-                Todos ({totalProjects})
+                <BookmarkCheck className="h-3.5 w-3.5" />
+                <span>Meus Designados ({totalAssigned})</span>
               </button>
+
               <button
-                onClick={() => setFilterEvaluated("evaluated")}
+                onClick={() => setFilterMode("pending")}
                 className={`rounded-lg px-3 py-1.5 transition ${
-                  filterEvaluated === "evaluated" ? "bg-white text-emerald-800 shadow-xs" : "hover:text-slate-900"
+                  filterMode === "pending"
+                    ? "bg-amber-600 text-white shadow-xs"
+                    : "hover:text-slate-900"
+                }`}
+              >
+                Pendentes
+              </button>
+
+              <button
+                onClick={() => setFilterMode("evaluated")}
+                className={`rounded-lg px-3 py-1.5 transition ${
+                  filterMode === "evaluated"
+                    ? "bg-emerald-600 text-white shadow-xs"
+                    : "hover:text-slate-900"
                 }`}
               >
                 Avaliados ({totalEvaluatedByMe})
               </button>
+
               <button
-                onClick={() => setFilterEvaluated("pending")}
+                onClick={() => setFilterMode("all")}
                 className={`rounded-lg px-3 py-1.5 transition ${
-                  filterEvaluated === "pending" ? "bg-white text-amber-800 shadow-xs" : "hover:text-slate-900"
+                  filterMode === "all"
+                    ? "bg-white text-slate-900 shadow-xs"
+                    : "hover:text-slate-900"
                 }`}
               >
-                Pendentes ({totalProjects - totalEvaluatedByMe})
+                Todos da Feira ({totalProjects})
               </button>
             </div>
 
@@ -231,7 +319,7 @@ export default function EvaluatorProjectsPage() {
                   onClick={() => setSelectedCategory("all")}
                   className={`rounded-xl px-3 py-1.5 font-bold transition shrink-0 ${
                     selectedCategory === "all"
-                      ? "bg-teal-600 text-white"
+                      ? "bg-slate-900 text-white"
                       : "bg-white border border-slate-200 text-slate-700 hover:bg-slate-100"
                   }`}
                 >
@@ -243,7 +331,7 @@ export default function EvaluatorProjectsPage() {
                     onClick={() => setSelectedCategory(cat)}
                     className={`rounded-xl px-3 py-1.5 font-semibold transition shrink-0 ${
                       selectedCategory === cat
-                        ? "bg-teal-600 text-white font-bold"
+                        ? "bg-slate-900 text-white font-bold"
                         : "bg-white border border-slate-200 text-slate-700 hover:bg-slate-100"
                     }`}
                   >
@@ -262,32 +350,54 @@ export default function EvaluatorProjectsPage() {
             <p className="text-sm font-semibold">Carregando projetos da feira...</p>
           </div>
         ) : filteredProjects.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-12 text-center">
+          <div className="rounded-3xl border border-dashed border-slate-300 bg-white p-12 text-center">
             <BookOpen className="mx-auto h-10 w-10 text-slate-300" />
-            <h3 className="mt-3 text-base font-bold text-slate-800">Nenhum projeto encontrado</h3>
-            <p className="mt-1 text-sm text-slate-500">
-              Tente ajustar sua busca ou selecione outra categoria.
+            <h3 className="mt-3 text-base font-bold text-slate-800">
+              {filterMode === "assigned" && totalAssigned === 0
+                ? "Nenhum projeto designado para esta matrícula ainda"
+                : "Nenhum projeto encontrado nesta visualização"}
+            </h3>
+            <p className="mt-1 text-sm text-slate-500 max-w-md mx-auto">
+              {filterMode === "assigned" && totalAssigned === 0 ? (
+                <>
+                  A comissão organizadora ainda não vinculou estandes para a matrícula <strong>{evaluatorCode}</strong>.
+                  Você pode alternar para a aba <strong>"Todos da Feira"</strong> acima para visualizar todos os projetos.
+                </>
+              ) : (
+                "Tente mudar os filtros de busca ou selecione outra categoria."
+              )}
             </p>
+            {filterMode === "assigned" && totalAssigned === 0 && (
+              <button
+                onClick={() => setFilterMode("all")}
+                className="mt-4 rounded-xl bg-teal-600 px-5 py-2 text-xs font-bold text-white shadow-sm hover:bg-teal-700 transition"
+              >
+                Ver Todos os Projetos da Feira
+              </button>
+            )}
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-4">
             {filteredProjects.map((project) => {
               const myEvaluation = myEvaluationsMap.get(project.id);
               const isEvaluated = Boolean(myEvaluation);
+              const isAssigned = isProjectAssignedToMe(project);
 
               return (
                 <div
                   key={project.id}
-                  className={`group relative rounded-2xl border bg-white p-5 transition-all shadow-xs hover:shadow-md ${
+                  className={`group relative rounded-3xl border bg-white p-5 sm:p-6 transition-all shadow-xs hover:shadow-md ${
                     isEvaluated
                       ? "border-emerald-300/80 bg-emerald-50/20"
+                      : isAssigned
+                      ? "border-teal-300 bg-teal-50/15"
                       : "border-slate-200 hover:border-slate-300"
                   }`}
                 >
                   <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
                     {/* Badges e Identificação */}
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="rounded-lg bg-teal-600 px-2.5 py-1 text-xs font-black text-white tracking-wide">
+                      <span className="rounded-lg bg-teal-700 px-2.5 py-1 text-xs font-black text-white tracking-wide">
                         {project.code}
                       </span>
                       {project.stand && (
@@ -299,15 +409,28 @@ export default function EvaluatorProjectsPage() {
                       <span className="rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700">
                         {project.category}
                       </span>
+
+                      {/* Selo: Designado para Você */}
+                      {isAssigned && (
+                        <span className="flex items-center gap-1 rounded-full bg-teal-100 border border-teal-300 px-2.5 py-0.5 text-[11px] font-black text-teal-900">
+                          <BookmarkCheck className="h-3.5 w-3.5 text-teal-700" />
+                          <span>Designado para Você</span>
+                        </span>
+                      )}
                     </div>
 
-                    {/* Selo Verde: Avaliado por você */}
-                    {isEvaluated && myEvaluation && (
+                    {/* Status da Avaliação */}
+                    {isEvaluated && myEvaluation ? (
                       <div className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 border border-emerald-300 px-3 py-1 text-xs font-bold text-emerald-800">
                         <CheckCircle2 className="h-4 w-4 text-emerald-600" />
                         <span>Avaliado por você ({myEvaluation.total_score} pts)</span>
                       </div>
-                    )}
+                    ) : isAssigned ? (
+                      <div className="inline-flex items-center gap-1.5 rounded-full bg-amber-100 border border-amber-300 px-3 py-1 text-xs font-bold text-amber-900">
+                        <AlertCircle className="h-3.5 w-3.5 text-amber-700" />
+                        <span>Aguardando sua nota</span>
+                      </div>
+                    ) : null}
                   </div>
 
                   {/* Título do Projeto */}
@@ -315,7 +438,7 @@ export default function EvaluatorProjectsPage() {
                     {project.title}
                   </h2>
 
-                  {/* Informações dos Alunos e Orientador */}
+                  {/* Integrantes e Orientador */}
                   <div className="mt-3 space-y-1 text-xs sm:text-sm text-slate-600">
                     <div className="flex items-start gap-2">
                       <Users className="h-4 w-4 shrink-0 text-slate-400 mt-0.5" />
@@ -330,13 +453,19 @@ export default function EvaluatorProjectsPage() {
                   </div>
 
                   {/* Botão de Ação */}
-                  <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-end">
+                  <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between">
+                    <span className="text-[11px] text-slate-400">
+                      10 critérios oficiais (0 a 10 pts)
+                    </span>
+
                     <Link
                       href={`/avaliar/${project.id}`}
                       className={`inline-flex items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-xs sm:text-sm font-bold transition shadow-xs active:scale-98 ${
                         isEvaluated
                           ? "bg-emerald-50 text-emerald-800 border border-emerald-200 hover:bg-emerald-100"
-                          : "bg-teal-600 text-white shadow-teal-600/20 hover:bg-teal-700"
+                          : isAssigned
+                          ? "bg-teal-700 text-white shadow-teal-700/20 hover:bg-teal-800"
+                          : "bg-slate-900 text-white hover:bg-slate-800"
                       }`}
                     >
                       <span>{isEvaluated ? "Editar Minha Avaliação" : "Avaliar Projeto"}</span>

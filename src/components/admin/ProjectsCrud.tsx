@@ -1,11 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Edit2, Trash2, Search, MapPin, Users, GraduationCap, X, Loader2 } from "lucide-react";
-import { Project } from "@/types";
+import { Plus, Edit2, Trash2, Search, MapPin, Users, GraduationCap, X, Loader2, BookmarkCheck } from "lucide-react";
+import { Project, Evaluator } from "@/types";
 
 interface ProjectsCrudProps {
   projects: Project[];
+  evaluators?: Evaluator[];
   onCreateProject: (project: Omit<Project, "id" | "created_at">) => Promise<void>;
   onUpdateProject: (id: string, project: Partial<Project>) => Promise<void>;
   onDeleteProject: (id: string) => Promise<void>;
@@ -13,6 +14,7 @@ interface ProjectsCrudProps {
 
 export default function ProjectsCrud({
   projects,
+  evaluators = [],
   onCreateProject,
   onUpdateProject,
   onDeleteProject,
@@ -28,6 +30,7 @@ export default function ProjectsCrud({
   const [members, setMembers] = useState("");
   const [advisor, setAdvisor] = useState("");
   const [stand, setStand] = useState("");
+  const [assignedEvaluators, setAssignedEvaluators] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
 
@@ -39,6 +42,7 @@ export default function ProjectsCrud({
     setMembers("");
     setAdvisor("");
     setStand(`Estande ${String.fromCharCode(65 + Math.floor(projects.length / 5))}-0${(projects.length % 5) + 1}`);
+    setAssignedEvaluators([]);
     setError("");
     setIsModalOpen(true);
   };
@@ -51,8 +55,16 @@ export default function ProjectsCrud({
     setMembers(p.members);
     setAdvisor(p.advisor || "");
     setStand(p.stand || "");
+    setAssignedEvaluators(p.assigned_evaluators || []);
     setError("");
     setIsModalOpen(true);
+  };
+
+  const handleToggleEvaluator = (evCode: string) => {
+    const upper = evCode.toUpperCase();
+    setAssignedEvaluators((prev) =>
+      prev.includes(upper) ? prev.filter((c) => c !== upper) : [...prev, upper]
+    );
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -73,6 +85,7 @@ export default function ProjectsCrud({
           members: members.trim(),
           advisor: advisor.trim() || null,
           stand: stand.trim() || null,
+          assigned_evaluators: assignedEvaluators,
         });
       } else {
         await onCreateProject({
@@ -82,6 +95,7 @@ export default function ProjectsCrud({
           members: members.trim(),
           advisor: advisor.trim() || null,
           stand: stand.trim() || null,
+          assigned_evaluators: assignedEvaluators,
         });
       }
       setIsModalOpen(false);
@@ -98,7 +112,9 @@ export default function ProjectsCrud({
       p.code.toLowerCase().includes(search.toLowerCase()) ||
       p.members.toLowerCase().includes(search.toLowerCase()) ||
       (p.advisor && p.advisor.toLowerCase().includes(search.toLowerCase())) ||
-      (p.stand && p.stand.toLowerCase().includes(search.toLowerCase()))
+      (p.stand && p.stand.toLowerCase().includes(search.toLowerCase())) ||
+      (p.assigned_evaluators &&
+        p.assigned_evaluators.some((c) => c.toLowerCase().includes(search.toLowerCase())))
   );
 
   return (
@@ -111,7 +127,7 @@ export default function ProjectsCrud({
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Buscar por código, título, integrante, estande..."
+            placeholder="Buscar por código, título, integrante, estande ou matrícula..."
             className="w-full rounded-xl border border-slate-300 bg-white py-2.5 pl-10 pr-4 text-xs sm:text-sm text-slate-900 placeholder:text-slate-400 focus:border-teal-600 focus:outline-none"
           />
         </div>
@@ -135,8 +151,8 @@ export default function ProjectsCrud({
                 <th className="px-4 py-3">Estande</th>
                 <th className="px-4 py-3 min-w-[200px]">Título do Projeto</th>
                 <th className="px-4 py-3">Categoria</th>
-                <th className="px-4 py-3 min-w-[180px]">Integrantes / Turma</th>
-                <th className="px-4 py-3">Orientador</th>
+                <th className="px-4 py-3 min-w-[170px]">Integrantes / Turma</th>
+                <th className="px-4 py-3 min-w-[150px]">Avaliadores Designados</th>
                 <th className="px-4 py-3 text-right">Ações</th>
               </tr>
             </thead>
@@ -148,56 +164,77 @@ export default function ProjectsCrud({
                   </td>
                 </tr>
               ) : (
-                filteredProjects.map((proj) => (
-                  <tr key={proj.id} className="hover:bg-slate-50 transition">
-                    <td className="px-4 py-3 font-bold text-slate-900 whitespace-nowrap">
-                      <span className="rounded-md bg-teal-50 px-2 py-0.5 text-xs font-black text-teal-800 border border-teal-200">
-                        {proj.code}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap font-medium text-slate-700">
-                      {proj.stand || "-"}
-                    </td>
-                    <td className="px-4 py-3 font-bold text-slate-900 leading-snug">
-                      {proj.title}
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-[11px] font-semibold text-slate-700">
-                        {proj.category}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-slate-700">
-                      {proj.members}
-                    </td>
-                    <td className="px-4 py-3 text-slate-600 whitespace-nowrap">
-                      {proj.advisor || "-"}
-                    </td>
-                    <td className="px-4 py-3 text-right whitespace-nowrap space-x-1">
-                      <button
-                        onClick={() => openEditModal(proj)}
-                        className="rounded-lg p-1.5 text-slate-600 hover:bg-slate-100 hover:text-teal-700 transition"
-                        title="Editar Projeto"
-                      >
-                        <Edit2 className="h-4 w-4" />
-                      </button>
-                      <button
-                        onClick={() => {
-                          if (
-                            confirm(
-                              `Deseja realmente excluir o projeto ${proj.code} ("${proj.title}")? Todas as avaliações deste projeto também serão removidas.`
-                            )
-                          ) {
-                            onDeleteProject(proj.id);
-                          }
-                        }}
-                        className="rounded-lg p-1.5 text-slate-600 hover:bg-rose-50 hover:text-rose-600 transition"
-                        title="Excluir Projeto"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </td>
-                  </tr>
-                ))
+                filteredProjects.map((proj) => {
+                  const assigned = proj.assigned_evaluators || [];
+                  return (
+                    <tr key={proj.id} className="hover:bg-slate-50 transition">
+                      <td className="px-4 py-3 font-bold text-slate-900 whitespace-nowrap">
+                        <span className="rounded-md bg-teal-50 px-2 py-0.5 text-xs font-black text-teal-800 border border-teal-200">
+                          {proj.code}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap font-medium text-slate-700">
+                        {proj.stand || "-"}
+                      </td>
+                      <td className="px-4 py-3 font-bold text-slate-900 leading-snug">
+                        {proj.title}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-[11px] font-semibold text-slate-700">
+                          {proj.category}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-slate-700">
+                        {proj.members}
+                      </td>
+
+                      {/* Avaliadores Designados para este projeto */}
+                      <td className="px-4 py-3">
+                        {assigned.length === 0 ? (
+                          <span className="text-[11px] text-slate-400 italic">
+                            Nenhum vinculado
+                          </span>
+                        ) : (
+                          <div className="flex flex-wrap gap-1">
+                            {assigned.map((evCode) => (
+                              <span
+                                key={evCode}
+                                className="rounded bg-teal-50 border border-teal-200 px-1.5 py-0.5 text-[10px] font-bold text-teal-800"
+                              >
+                                {evCode}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </td>
+
+                      <td className="px-4 py-3 text-right whitespace-nowrap space-x-1">
+                        <button
+                          onClick={() => openEditModal(proj)}
+                          className="rounded-lg p-1.5 text-slate-600 hover:bg-slate-100 hover:text-teal-700 transition"
+                          title="Editar Projeto"
+                        >
+                          <Edit2 className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={() => {
+                            if (
+                              confirm(
+                                `Deseja realmente excluir o projeto ${proj.code} ("${proj.title}")? Todas as avaliações deste projeto também serão removidas.`
+                              )
+                            ) {
+                              onDeleteProject(proj.id);
+                            }
+                          }}
+                          className="rounded-lg p-1.5 text-slate-600 hover:bg-rose-50 hover:text-rose-600 transition"
+                          title="Excluir Projeto"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
@@ -207,20 +244,20 @@ export default function ProjectsCrud({
       {/* Modal de Criação / Edição de Projeto */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs">
-          <div className="w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <h3 className="text-lg font-black text-slate-900">
+          <div className="relative flex max-h-[90vh] w-full max-w-lg flex-col rounded-3xl bg-white shadow-2xl overflow-hidden">
+            <div className="flex items-center justify-between border-b border-slate-100 p-5 bg-slate-50">
+              <h3 className="text-base font-black text-slate-900">
                 {editingProject ? "Editar Projeto" : "Cadastrar Novo Projeto"}
               </h3>
               <button
                 onClick={() => setIsModalOpen(false)}
-                className="rounded-lg p-1 text-slate-400 hover:bg-slate-100"
+                className="rounded-lg p-1 text-slate-400 hover:bg-slate-200"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="mt-4 space-y-4">
+            <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-4">
               {error && (
                 <div className="rounded-xl bg-rose-50 border border-rose-200 p-3 text-xs font-semibold text-rose-700">
                   {error}
@@ -310,6 +347,38 @@ export default function ProjectsCrud({
                 />
               </div>
 
+              {/* Vincular Avaliadores Designados */}
+              <div className="pt-2 border-t border-slate-100">
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
+                  Avaliadores Designados para este Projeto (Escala):
+                </label>
+                {evaluators.length === 0 ? (
+                  <p className="text-xs text-slate-400 italic">
+                    Nenhum avaliador cadastrado ainda. Você pode cadastrar matrículas na aba "Avaliadores & Escala".
+                  </p>
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    {evaluators.map((ev) => {
+                      const isSelected = assignedEvaluators.includes(ev.code.toUpperCase());
+                      return (
+                        <button
+                          key={ev.code}
+                          type="button"
+                          onClick={() => handleToggleEvaluator(ev.code)}
+                          className={`rounded-xl px-3 py-1.5 text-xs font-bold transition border ${
+                            isSelected
+                              ? "bg-teal-700 text-white border-teal-700 shadow-xs"
+                              : "bg-white text-slate-700 border-slate-200 hover:bg-slate-50"
+                          }`}
+                        >
+                          {ev.code} {ev.name ? `(${ev.name.split(" ")[0]})` : ""}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
               <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
                 <button
                   type="button"
@@ -321,7 +390,7 @@ export default function ProjectsCrud({
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="rounded-xl bg-teal-600 px-5 py-2 text-xs font-bold text-white shadow-md hover:bg-teal-700 disabled:opacity-50 flex items-center gap-1.5"
+                  className="rounded-xl bg-teal-600 px-5 py-2 text-xs font-bold text-white shadow-md hover:bg-teal-700 disabled:opacity-50 flex items-center gap-1.5 cursor-pointer"
                 >
                   {isSubmitting && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
                   <span>{editingProject ? "Salvar Alterações" : "Criar Projeto"}</span>

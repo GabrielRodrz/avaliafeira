@@ -74,9 +74,14 @@ export default function EvaluationsInspectionModal({
                       #{index + 1}
                     </div>
                     <div>
-                      <div className="flex items-center gap-1.5 font-bold text-sm text-slate-900">
+                      <div className="flex flex-wrap items-center gap-1.5 font-bold text-sm text-slate-900">
                         <User className="h-4 w-4 text-teal-600" />
                         <span>{evalItem.evaluator_name}</span>
+                        {evalItem.evaluator_code && (
+                          <span className="rounded-md bg-teal-50 border border-teal-200 px-1.5 py-0.2 text-[10px] font-black text-teal-800">
+                            Matrícula: {evalItem.evaluator_code}
+                          </span>
+                        )}
                       </div>
                       {evalItem.created_at && (
                         <div className="flex items-center gap-1 text-[11px] text-slate-400">

@@ -1,4 +1,4 @@
-import { Criterion, FairSettings, Project, Evaluation, OFFICIAL_CRITERIA } from "@/types";
+import { Criterion, FairSettings, Project, Evaluation, Evaluator, OFFICIAL_CRITERIA } from "@/types";
 
 export const INITIAL_SETTINGS: FairSettings = {
   name: "AvaliaFeira – Feira de Ciências e Tecnologia",
@@ -9,6 +9,44 @@ export const INITIAL_SETTINGS: FairSettings = {
   is_active: true,
 };
 
+export const INITIAL_EVALUATORS: Evaluator[] = [
+  {
+    id: "evaluator-1",
+    code: "AV-01",
+    name: "Dra. Renata Vasconcelos",
+    assigned_projects: ["proj-01-biofiltro", "proj-02-robo", "proj-03-bioplastico"],
+    created_at: new Date(Date.now() - 3600000 * 48).toISOString(),
+  },
+  {
+    id: "evaluator-2",
+    code: "AV-02",
+    name: "Prof. André Valente",
+    assigned_projects: ["proj-01-biofiltro", "proj-03-bioplastico", "proj-05-energia"],
+    created_at: new Date(Date.now() - 3600000 * 48).toISOString(),
+  },
+  {
+    id: "evaluator-3",
+    code: "AV-03",
+    name: "Profa. Camila Guimarães",
+    assigned_projects: ["proj-02-robo", "proj-04-libras", "proj-06-reflorestamento"],
+    created_at: new Date(Date.now() - 3600000 * 48).toISOString(),
+  },
+  {
+    id: "evaluator-4",
+    code: "AV-04",
+    name: null, // Digita o nome na hora do login
+    assigned_projects: ["proj-04-libras", "proj-05-energia"],
+    created_at: new Date(Date.now() - 3600000 * 48).toISOString(),
+  },
+  {
+    id: "evaluator-5",
+    code: "AV-05",
+    name: null, // Digita o nome na hora do login
+    assigned_projects: ["proj-01-biofiltro", "proj-06-reflorestamento"],
+    created_at: new Date(Date.now() - 3600000 * 48).toISOString(),
+  },
+];
+
 export const INITIAL_PROJECTS: Project[] = [
   {
     id: "proj-01-biofiltro",
@@ -18,6 +56,7 @@ export const INITIAL_PROJECTS: Project[] = [
     members: "Lucas Andrade, Beatriz Costa e Marcelo Vieira (3º Ano A)",
     advisor: "Profa. Dra. Mariana Fernandes",
     stand: "Estande A-01",
+    assigned_evaluators: ["AV-01", "AV-02", "AV-05"],
     created_at: new Date(Date.now() - 3600000 * 24).toISOString(),
   },
   {
@@ -28,6 +67,7 @@ export const INITIAL_PROJECTS: Project[] = [
     members: "Gabriel Santos, Enzo Carvalho e Júlia Moura (2º Ano B)",
     advisor: "Prof. Carlos Eduardo Silveira",
     stand: "Estande B-04",
+    assigned_evaluators: ["AV-01", "AV-03"],
     created_at: new Date(Date.now() - 3600000 * 20).toISOString(),
   },
   {
@@ -38,6 +78,7 @@ export const INITIAL_PROJECTS: Project[] = [
     members: "Camila Ribeiro, Thiago Mendonça e Larissa Lima (3º Ano C)",
     advisor: "Profa. Helena Prado",
     stand: "Estande A-02",
+    assigned_evaluators: ["AV-01", "AV-02"],
     created_at: new Date(Date.now() - 3600000 * 18).toISOString(),
   },
   {
@@ -48,6 +89,7 @@ export const INITIAL_PROJECTS: Project[] = [
     members: "Mateus Pinheiro, Sofia Albuquerque e Pedro Rocha (1º Ano A)",
     advisor: "Prof. Rafael Albuquerque",
     stand: "Estande C-01",
+    assigned_evaluators: ["AV-03", "AV-04"],
     created_at: new Date(Date.now() - 3600000 * 12).toISOString(),
   },
   {
@@ -58,6 +100,7 @@ export const INITIAL_PROJECTS: Project[] = [
     members: "Ana Clara Souza, Felipe Ramos e Natália Torres (2º Ano A)",
     advisor: "Prof. Dr. Vinicius Gomes",
     stand: "Estande B-02",
+    assigned_evaluators: ["AV-02", "AV-04"],
     created_at: new Date(Date.now() - 3600000 * 8).toISOString(),
   },
   {
@@ -68,6 +111,7 @@ export const INITIAL_PROJECTS: Project[] = [
     members: "Guilherme Martins, Letícia Duarte (3º Ano B)",
     advisor: "Profa. Dra. Simone Castro",
     stand: "Estande A-03",
+    assigned_evaluators: ["AV-03", "AV-05"],
     created_at: new Date(Date.now() - 3600000 * 4).toISOString(),
   },
 ];
@@ -76,6 +120,7 @@ export const INITIAL_EVALUATIONS: Evaluation[] = [
   {
     id: "eval-01",
     project_id: "proj-01-biofiltro",
+    evaluator_code: "AV-01",
     evaluator_name: "Dra. Renata Vasconcelos",
     scores: {
       "1": 10,
@@ -96,6 +141,7 @@ export const INITIAL_EVALUATIONS: Evaluation[] = [
   {
     id: "eval-02",
     project_id: "proj-01-biofiltro",
+    evaluator_code: "AV-02",
     evaluator_name: "Prof. André Valente",
     scores: {
       "1": 10,
@@ -116,6 +162,7 @@ export const INITIAL_EVALUATIONS: Evaluation[] = [
   {
     id: "eval-03",
     project_id: "proj-02-robo",
+    evaluator_code: "AV-01",
     evaluator_name: "Dra. Renata Vasconcelos",
     scores: {
       "1": 8,
@@ -136,6 +183,7 @@ export const INITIAL_EVALUATIONS: Evaluation[] = [
   {
     id: "eval-04",
     project_id: "proj-03-bioplastico",
+    evaluator_code: "AV-02",
     evaluator_name: "Prof. André Valente",
     scores: {
       "1": 8,

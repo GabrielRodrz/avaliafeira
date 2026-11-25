@@ -1,37 +1,68 @@
 "use client";
 
-import { useState } from "react";
-import { UserCheck, Sparkles } from "lucide-react";
+import { useState, useEffect } from "react";
+import { UserCheck, Sparkles, Hash, User, ArrowRight } from "lucide-react";
+import { Evaluator } from "@/types";
 
 interface EvaluatorNameModalProps {
   isOpen: boolean;
+  currentCode: string;
   currentName: string;
-  onSave: (name: string) => void;
+  onSave: (code: string, name: string) => void;
   onCancel?: () => void;
   canCancel?: boolean;
+  availableEvaluators?: Evaluator[];
 }
 
 export default function EvaluatorNameModal({
   isOpen,
+  currentCode,
   currentName,
   onSave,
   onCancel,
   canCancel = false,
+  availableEvaluators = [],
 }: EvaluatorNameModalProps) {
+  const [code, setCode] = useState(currentCode || "");
   const [name, setName] = useState(currentName || "");
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (currentCode) setCode(currentCode);
+    if (currentName) setName(currentName);
+  }, [currentCode, currentName, isOpen]);
+
+  // Se o avaliador digitar uma matrícula existente que já tem nome gravado, sugerir o nome
+  const handleCodeChange = (newCode: string) => {
+    const upper = newCode.toUpperCase();
+    setCode(upper);
+    if (error) setError("");
+
+    const found = availableEvaluators.find((e) => e.code.toUpperCase() === upper);
+    if (found && found.name && !name) {
+      setName(found.name);
+    }
+  };
 
   if (!isOpen) return null;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const trimmed = name.trim();
-    if (trimmed.length < 3) {
+    const cleanCode = code.trim().toUpperCase();
+    const cleanName = name.trim();
+
+    if (!cleanCode) {
+      setError("Por favor, informe sua matrícula ou código de jurado (ex: AV-01).");
+      return;
+    }
+
+    if (cleanName.length < 3) {
       setError("Por favor, digite seu nome completo (mínimo de 3 caracteres).");
       return;
     }
+
     setError("");
-    onSave(trimmed);
+    onSave(cleanCode, cleanName);
   };
 
   return (
@@ -43,37 +74,67 @@ export default function EvaluatorNameModal({
           </div>
           <div>
             <h2 className="text-xl font-bold text-slate-900">Identificação do Avaliador</h2>
-            <p className="text-sm text-slate-500">Informe seu nome para registrar suas notas</p>
+            <p className="text-sm text-slate-500">Informe sua matrícula e seu nome para avaliar</p>
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+        <form onSubmit={handleSubmit} className="mt-5 space-y-4">
+          {error && (
+            <div className="rounded-xl bg-rose-50 border border-rose-200 p-3 text-xs font-semibold text-rose-700">
+              {error}
+            </div>
+          )}
+
+          {/* Campo Matrícula */}
           <div>
-            <label className="block text-sm font-semibold text-slate-700">
-              Nome Completo do Jurado / Avaliador
+            <label className="block text-xs font-bold uppercase tracking-wider text-slate-700">
+              Matrícula / Código do Jurado *
             </label>
-            <input
-              type="text"
-              required
-              autoFocus
-              value={name}
-              onChange={(e) => {
-                setName(e.target.value);
-                if (error) setError("");
-              }}
-              placeholder="Ex: Profa. Mariana Silveira"
-              className="mt-1.5 w-full rounded-xl border border-slate-300 px-4 py-3 text-base font-medium text-slate-900 placeholder:text-slate-400 focus:border-teal-600 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
-            />
-            {error && <p className="mt-1.5 text-xs font-semibold text-rose-600">{error}</p>}
+            <div className="relative mt-1.5">
+              <Hash className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                required
+                autoFocus
+                value={code}
+                onChange={(e) => handleCodeChange(e.target.value)}
+                placeholder="Ex: AV-01 ou 101"
+                className="w-full rounded-xl border border-slate-300 py-3 pl-10 pr-4 text-sm font-bold uppercase text-slate-900 placeholder:text-slate-400 focus:border-teal-600 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
+              />
+            </div>
+            <p className="mt-1 text-[11px] text-slate-500">
+              A matrícula define a escala de projetos designados para você avaliar.
+            </p>
           </div>
 
-          <div className="rounded-xl bg-teal-50/70 p-3 text-xs text-teal-900">
+          {/* Campo Nome Completo */}
+          <div>
+            <label className="block text-xs font-bold uppercase tracking-wider text-slate-700">
+              Seu Nome Completo (digitado na hora) *
+            </label>
+            <div className="relative mt-1.5">
+              <User className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                required
+                value={name}
+                onChange={(e) => {
+                  setName(e.target.value);
+                  if (error) setError("");
+                }}
+                placeholder="Ex: Profa. Mariana Silveira"
+                className="w-full rounded-xl border border-slate-300 py-3 pl-10 pr-4 text-sm font-medium text-slate-900 placeholder:text-slate-400 focus:border-teal-600 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
+              />
+            </div>
+          </div>
+
+          <div className="rounded-xl bg-teal-50/80 p-3 text-xs text-teal-900 border border-teal-200/60">
             <div className="flex items-center gap-1.5 font-bold">
               <Sparkles className="h-3.5 w-3.5 text-teal-600" />
-              <span>Acesso Rápido Sem Senha</span>
+              <span>Escala Personalizada de Avaliação</span>
             </div>
-            <p className="mt-1 text-teal-800">
-              Seu nome ficará salvo neste aparelho para que você não precise redigitá-lo a cada estande avaliado.
+            <p className="mt-1 text-teal-800 leading-relaxed">
+              O sistema exibirá os estandes e projetos que a coordenação atribuiu especificamente para sua matrícula avaliar.
             </p>
           </div>
 
@@ -89,9 +150,10 @@ export default function EvaluatorNameModal({
             )}
             <button
               type="submit"
-              className="w-full sm:w-auto rounded-xl bg-teal-600 px-6 py-2.5 text-sm font-bold text-white shadow-md shadow-teal-600/20 hover:bg-teal-700 focus:ring-2 focus:ring-teal-500 focus:outline-none transition-all active:scale-98"
+              className="w-full sm:w-auto rounded-xl bg-teal-600 px-6 py-2.5 text-sm font-bold text-white shadow-md shadow-teal-600/20 hover:bg-teal-700 focus:ring-2 focus:ring-teal-500 focus:outline-none transition-all active:scale-98 flex items-center justify-center gap-2 cursor-pointer"
             >
-              Continuar para Avaliação
+              <span>Acessar Meus Projetos</span>
+              <ArrowRight className="h-4 w-4" />
             </button>
           </div>
         </form>

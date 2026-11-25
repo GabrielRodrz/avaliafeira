@@ -15,14 +15,31 @@ export interface Project {
   members: string;
   advisor?: string | null;
   stand?: string | null;
+  assigned_evaluators?: string[]; // Matrículas dos avaliadores designados (ex: ["AV-01", "AV-02"])
   created_at?: string;
   updated_at?: string;
+}
+
+export interface Evaluator {
+  id: string;
+  code: string; // Matrícula do avaliador (ex: "AV-01", "101")
+  name?: string | null; // Nome preenchido pelo jurado na hora ou pré-definido
+  assigned_projects?: string[]; // IDs dos projetos que ele deve avaliar
+  created_at?: string;
+}
+
+export interface ProjectEvaluator {
+  id: string;
+  project_id: string;
+  evaluator_code: string;
+  created_at?: string;
 }
 
 export interface Evaluation {
   id: string;
   project_id: string;
-  evaluator_name: string;
+  evaluator_code?: string | null; // Matrícula do avaliador
+  evaluator_name: string; // Nome digitado na hora
   scores: Record<string, number>; // { "1": 10, "2": 8, ... }
   total_score: number;
   notes?: string | null;
@@ -197,6 +214,7 @@ export const OFFICIAL_CRITERIA: Criterion[] = [
 export interface ProjectRankingItem {
   project: Project;
   evaluationsCount: number;
+  assignedEvaluatorsCount: number;
   criteriaAverages: Record<number, number>; // criterionId -> average (0 to 10)
   finalScore: number; // 0 to 100 (sum of criteria averages)
   rank: number;

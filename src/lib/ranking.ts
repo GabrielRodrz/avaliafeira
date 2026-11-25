@@ -73,6 +73,7 @@ export function computeOfficialRanking(
     return {
       project,
       evaluationsCount: scoreData.evaluationsCount,
+      assignedEvaluatorsCount: project.assigned_evaluators?.length || 0,
       criteriaAverages: scoreData.criteriaAverages,
       finalScore: scoreData.finalScore,
       rank: 0,

@@ -54,11 +54,29 @@ create table if not exists public.projects (
   updated_at timestamptz default now()
 );
 
--- 6. Tabela de Avaliações
+-- 6. Tabela de Avaliadores / Matrículas Cadastradas
+create table if not exists public.evaluators (
+  id uuid primary key default gen_random_uuid(),
+  code text unique not null, -- Matrícula do Jurado (ex: AV-01, 101)
+  name text, -- Nome do Jurado (digitado na hora pelo avaliador ou pré-definido)
+  created_at timestamptz default now()
+);
+
+-- 7. Tabela de Escala: Projetos Designados por Avaliador
+create table if not exists public.project_evaluators (
+  id uuid primary key default gen_random_uuid(),
+  project_id uuid references public.projects(id) on delete cascade not null,
+  evaluator_code text not null, -- Matrícula do jurado vinculado
+  created_at timestamptz default now(),
+  constraint uq_project_evaluator_alloc unique (project_id, evaluator_code)
+);
+
+-- 8. Tabela de Avaliações
 create table if not exists public.evaluations (
   id uuid primary key default gen_random_uuid(),
   project_id uuid references public.projects(id) on delete cascade not null,
-  evaluator_name text not null,
+  evaluator_code text, -- Matrícula do avaliador
+  evaluator_name text not null, -- Nome digitado na hora
   scores jsonb not null, -- Mapeia {"1": 10, "2": 8, ...}
   total_score numeric not null, -- Soma das 10 notas (0 a 100)
   notes text,
@@ -66,6 +84,9 @@ create table if not exists public.evaluations (
   updated_at timestamptz default now(),
   constraint uq_project_evaluator unique (project_id, evaluator_name)
 );
+
+-- Garantir coluna evaluator_code na tabela evaluations caso já exista
+alter table public.evaluations add column if not exists evaluator_code text;
 
 -- ==============================================================================
 -- INSERÇÃO DOS 10 CRITÉRIOS OFICIAIS (Modelo Oficial AvaliaFeira)
@@ -110,6 +131,39 @@ select * from (values
 ) as p(code, title, category, members, advisor, stand)
 where not exists (select 1 from public.projects);
 
+-- Inserir Avaliadores Iniciais (se vazio)
+insert into public.evaluators (code, name)
+select * from (values
+  ('AV-01', 'Dra. Renata Vasconcelos'),
+  ('AV-02', 'Prof. André Valente'),
+  ('AV-03', 'Profa. Camila Guimarães'),
+  ('AV-04', null),
+  ('AV-05', null)
+) as e(code, name)
+where not exists (select 1 from public.evaluators);
+
+-- Inserir Escala Inicial de Avaliadores para os Projetos (se vazio)
+insert into public.project_evaluators (project_id, evaluator_code)
+select p.id, e.code
+from public.projects p
+cross join (values ('AV-01'), ('AV-02')) as e(code)
+where p.code = 'PROJ-01'
+  and not exists (select 1 from public.project_evaluators where evaluator_code = 'AV-01' and project_id = p.id);
+
+insert into public.project_evaluators (project_id, evaluator_code)
+select p.id, e.code
+from public.projects p
+cross join (values ('AV-02'), ('AV-03')) as e(code)
+where p.code = 'PROJ-02'
+  and not exists (select 1 from public.project_evaluators where evaluator_code = 'AV-02' and project_id = p.id);
+
+insert into public.project_evaluators (project_id, evaluator_code)
+select p.id, e.code
+from public.projects p
+cross join (values ('AV-01'), ('AV-03')) as e(code)
+where p.code = 'PROJ-03'
+  and not exists (select 1 from public.project_evaluators where evaluator_code = 'AV-01' and project_id = p.id);
+
 -- ==============================================================================
 -- SEGURANÇA: ROW LEVEL SECURITY (RLS)
 -- ==============================================================================
@@ -117,6 +171,8 @@ alter table public.admin_users enable row level security;
 alter table public.fair_settings enable row level security;
 alter table public.criteria enable row level security;
 alter table public.projects enable row level security;
+alter table public.evaluators enable row level security;
+alter table public.project_evaluators enable row level security;
 alter table public.evaluations enable row level security;
 
 -- Funções Auxiliares de Autenticação Admin
@@ -162,6 +218,24 @@ drop policy if exists "Admins can manage projects" on public.projects;
 create policy "Admins can manage projects" on public.projects
   for all using (public.is_admin());
 
+-- Políticas para evaluators:
+drop policy if exists "Public can view evaluators" on public.evaluators;
+create policy "Public can view evaluators" on public.evaluators
+  for select using (true);
+
+drop policy if exists "Public and admins can manage evaluators" on public.evaluators;
+create policy "Public and admins can manage evaluators" on public.evaluators
+  for all using (true);
+
+-- Políticas para project_evaluators:
+drop policy if exists "Public can view project_evaluators" on public.project_evaluators;
+create policy "Public can view project_evaluators" on public.project_evaluators
+  for select using (true);
+
+drop policy if exists "Public and admins can manage project_evaluators" on public.project_evaluators;
+create policy "Public and admins can manage project_evaluators" on public.project_evaluators
+  for all using (true);
+
 -- Políticas para evaluations:
 -- 1. Qualquer pessoa (avaliador) pode inserir sua própria avaliação
 drop policy if exists "Evaluators can submit evaluations" on public.evaluations;
@@ -187,10 +261,11 @@ create policy "Admins can delete evaluations" on public.evaluations
 -- HABILITAR SUPABASE REALTIME
 -- ==============================================================================
 begin;
-  -- Remover publicações anteriores se já adicionadas para evitar duplicidade
   drop publication if exists supabase_realtime;
   create publication supabase_realtime for table 
     public.evaluations, 
     public.projects, 
-    public.fair_settings;
+    public.fair_settings,
+    public.evaluators,
+    public.project_evaluators;
 commit;
