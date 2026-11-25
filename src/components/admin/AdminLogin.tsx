@@ -10,8 +10,8 @@ interface AdminLoginProps {
 }
 
 export default function AdminLogin({ onLoginSuccess }: AdminLoginProps) {
-  const [username, setUsername] = useState("gabriel.rodrigues");
-  const [password, setPassword] = useState("Gabri0708.#");
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
@@ -176,7 +176,7 @@ export default function AdminLogin({ onLoginSuccess }: AdminLoginProps) {
                   autoCorrect="off"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  placeholder="ex: gabriel.rodrigues"
+                  placeholder="Digite seu usuário"
                   className="w-full rounded-xl border border-slate-300 py-3 pl-10 pr-4 text-sm font-medium text-slate-900 placeholder:text-slate-400 focus:border-teal-600 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
                 />
               </div>
@@ -221,18 +221,6 @@ export default function AdminLogin({ onLoginSuccess }: AdminLoginProps) {
               )}
             </button>
           </form>
-
-          {/* Dica de Credenciais do Administrador Padrão */}
-          <div className="mt-6 border-t border-slate-100 pt-5 text-center">
-            <span className="text-xs font-semibold text-slate-500">
-              Administrador Padrão Auto-Provisionado:
-            </span>
-            <div className="mt-1.5 inline-flex flex-wrap items-center justify-center gap-2 rounded-lg bg-slate-100 px-3 py-1.5 text-xs text-slate-700 font-mono">
-              <span>Usuário: <strong>gabriel.rodrigues</strong></span>
-              <span>•</span>
-              <span>Senha: <strong>Gabri0708.#</strong></span>
-            </div>
-          </div>
         </div>
       </div>
     </div>
