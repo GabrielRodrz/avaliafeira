@@ -15,6 +15,7 @@ import EvaluatorsManagement from "@/components/admin/EvaluatorsManagement";
 import {
   getProjects,
   createProject,
+  createProjectsBatch,
   updateProject,
   deleteProject,
   getEvaluations,
@@ -24,6 +25,7 @@ import {
   saveFairSettings,
   getEvaluators,
   createOrUpdateEvaluator,
+  createOrUpdateEvaluatorsBatch,
   deleteEvaluator,
   subscribeToRealtimeEvaluations,
 } from "@/lib/data-service";
@@ -169,6 +171,11 @@ export default function AdminPage() {
     await loadAllData();
   };
 
+  const handleBatchCreateProjects = async (list: Omit<Project, "id" | "created_at">[]) => {
+    await createProjectsBatch(list);
+    await loadAllData();
+  };
+
   const handleUpdateProject = async (id: string, updates: Partial<Project>) => {
     await updateProject(id, updates);
     await loadAllData();
@@ -190,6 +197,13 @@ export default function AdminPage() {
     assignedProjects?: string[]
   ) => {
     await createOrUpdateEvaluator(code, name, assignedProjects);
+    await loadAllData();
+  };
+
+  const handleBatchCreateEvaluators = async (
+    list: { code: string; name?: string | null; assignedProjects?: string[] }[]
+  ) => {
+    await createOrUpdateEvaluatorsBatch(list);
     await loadAllData();
   };
 
@@ -267,6 +281,7 @@ export default function AdminPage() {
             projects={projects}
             evaluators={evaluators}
             onCreateProject={handleCreateProject}
+            onBatchCreateProjects={handleBatchCreateProjects}
             onUpdateProject={handleUpdateProject}
             onDeleteProject={handleDeleteProject}
           />
@@ -278,6 +293,7 @@ export default function AdminPage() {
             projects={projects}
             evaluations={evaluations}
             onCreateOrUpdateEvaluator={handleCreateOrUpdateEvaluator}
+            onBatchCreateEvaluators={handleBatchCreateEvaluators}
             onDeleteEvaluator={handleDeleteEvaluator}
           />
         )}

@@ -241,6 +241,14 @@ export async function deleteEvaluator(code: string): Promise<boolean> {
   return true;
 }
 
+export async function createOrUpdateEvaluatorsBatch(
+  list: { code: string; name?: string | null; assignedProjects?: string[] }[]
+): Promise<void> {
+  for (const item of list) {
+    await createOrUpdateEvaluator(item.code, item.name, item.assignedProjects);
+  }
+}
+
 // ==============================================================================
 // ALOCAÇÃO DE AVALIADORES A PROJETOS (ESCALA)
 // ==============================================================================
@@ -412,6 +420,14 @@ export async function createProject(
     localStorage.setItem(LOCAL_STORAGE_KEYS.PROJECTS, JSON.stringify(updated));
   }
   return newProj;
+}
+
+export async function createProjectsBatch(
+  list: Omit<Project, "id" | "created_at">[]
+): Promise<void> {
+  for (const item of list) {
+    await createProject(item);
+  }
 }
 
 export async function updateProject(id: string, updates: Partial<Project>): Promise<Project> {

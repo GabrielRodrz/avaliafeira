@@ -16,6 +16,8 @@ import {
   BookmarkCheck,
   RefreshCw,
   UserCheck,
+  Lock,
+  ShieldAlert,
 } from "lucide-react";
 import EvaluatorHeader from "@/components/evaluator/EvaluatorHeader";
 import EvaluatorNameModal from "@/components/evaluator/EvaluatorNameModal";
@@ -155,6 +157,11 @@ export default function ProjectEvaluationPage() {
       return;
     }
 
+    if (!isAssigned) {
+      alert("Acesso restrito: este projeto não está atribuído para a sua escala de jurado.");
+      return;
+    }
+
     if (completedCount < criteria.length) {
       alert("Por favor, atribua nota para todos os 10 critérios antes de finalizar.");
       return;
@@ -208,7 +215,9 @@ export default function ProjectEvaluationPage() {
   const isAssigned =
     evaluatorCode &&
     project.assigned_evaluators &&
-    project.assigned_evaluators.some((c) => c.toUpperCase() === evaluatorCode.toUpperCase());
+    project.assigned_evaluators.some(
+      (c) => c.replace(/\D/g, "") === evaluatorCode.replace(/\D/g, "")
+    );
 
   return (
     <div className="min-h-screen bg-slate-50 pb-32">
@@ -269,7 +278,33 @@ export default function ProjectEvaluationPage() {
           </Link>
         </div>
 
-        {/* Card do Projeto em Avaliação */}
+        {!isAssigned ? (
+          <div className="rounded-3xl border-2 border-amber-300 bg-amber-50/80 p-8 text-center max-w-xl mx-auto my-8 shadow-xs">
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-amber-100 text-amber-700 mb-4 shadow-inner">
+              <Lock className="h-8 w-8" />
+            </div>
+            <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+              Votação Não Atribuída à sua Escala
+            </h2>
+            <p className="mt-3 text-sm sm:text-base text-amber-950 font-medium leading-relaxed">
+              O projeto <strong>{project.code} – {project.title}</strong> não faz parte dos projetos designados para a sua <strong>Matrícula {evaluatorCode}</strong>.
+            </p>
+            <p className="mt-2 text-xs text-amber-800">
+              Cada jurado só pode votar nos projetos especificamente atribuídos pela coordenação.
+            </p>
+            <div className="mt-6">
+              <Link
+                href="/avaliar"
+                className="inline-flex items-center gap-2 rounded-2xl bg-teal-700 px-6 py-3.5 text-sm font-black text-white shadow-md hover:bg-teal-800 transition active:scale-98"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                <span>Ver Meus Projetos Designados</span>
+              </Link>
+            </div>
+          </div>
+        ) : (
+          <>
+            {/* Card do Projeto em Avaliação */}
         <section className="mb-6 rounded-3xl border border-slate-200 bg-white p-5 sm:p-6 shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3">
             <div className="flex flex-wrap items-center gap-2">
@@ -368,17 +403,21 @@ export default function ProjectEvaluationPage() {
             className="w-full rounded-2xl border border-slate-200 p-3.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-teal-600 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
           />
         </section>
+          </>
+        )}
       </main>
 
-      {/* Barra Fixa Inferior de Progresso e Envio */}
-      <StickyBottomBar
-        completedCount={completedCount}
-        totalCriteria={criteria.length}
-        partialScore={partialScore}
-        onSubmit={handleSubmit}
-        isSubmitting={isSubmitting}
-        isEditing={isEditing}
-      />
+      {/* Barra Fixa Inferior de Progresso e Envio (somente para projetos atribuídos) */}
+      {isAssigned && (
+        <StickyBottomBar
+          completedCount={completedCount}
+          totalCriteria={criteria.length}
+          partialScore={partialScore}
+          onSubmit={handleSubmit}
+          isSubmitting={isSubmitting}
+          isEditing={isEditing}
+        />
+      )}
 
       {/* Modal de Sucesso / Confirmação */}
       {showSuccessModal && (

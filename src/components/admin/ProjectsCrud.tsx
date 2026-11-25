@@ -1,13 +1,14 @@
 "use client";
 
-import { useState } from "react";
-import { Plus, Edit2, Trash2, Search, MapPin, Users, GraduationCap, X, Loader2, BookmarkCheck } from "lucide-react";
+import { useState, useRef } from "react";
+import { Plus, Edit2, Trash2, Search, MapPin, Users, GraduationCap, X, Loader2, BookmarkCheck, Upload, Download, FileSpreadsheet, AlertCircle } from "lucide-react";
 import { Project, Evaluator } from "@/types";
 
 interface ProjectsCrudProps {
   projects: Project[];
   evaluators?: Evaluator[];
   onCreateProject: (project: Omit<Project, "id" | "created_at">) => Promise<void>;
+  onBatchCreateProjects?: (list: Omit<Project, "id" | "created_at">[]) => Promise<void>;
   onUpdateProject: (id: string, project: Partial<Project>) => Promise<void>;
   onDeleteProject: (id: string) => Promise<void>;
 }
@@ -16,12 +17,21 @@ export default function ProjectsCrud({
   projects,
   evaluators = [],
   onCreateProject,
+  onBatchCreateProjects,
   onUpdateProject,
   onDeleteProject,
 }: ProjectsCrudProps) {
   const [search, setSearch] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
+
+  // Estados do Modal de Importação CSV
+  const [isCSVModalOpen, setIsCSVModalOpen] = useState(false);
+  const [csvText, setCsvText] = useState("");
+  const [parsedProjects, setParsedProjects] = useState<Omit<Project, "id" | "created_at">[]>([]);
+  const [csvError, setCsvError] = useState("");
+  const [isImporting, setIsImporting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Form states
   const [code, setCode] = useState("");
@@ -33,6 +43,102 @@ export default function ProjectsCrud({
   const [assignedEvaluators, setAssignedEvaluators] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
+
+  const parseProjectsCSV = (content: string) => {
+    setCsvError("");
+    const lines = content.split(/\r?\n/).map((l) => l.trim()).filter((l) => l.length > 0);
+    if (lines.length === 0) {
+      setParsedProjects([]);
+      return;
+    }
+
+    const list: Omit<Project, "id" | "created_at">[] = [];
+
+    lines.forEach((line, index) => {
+      if (index === 0 && (line.toLowerCase().includes("titulo") || line.toLowerCase().includes("title") || line.toLowerCase().includes("codigo"))) {
+        return;
+      }
+
+      const parts = line.split(/[;,\t]/).map((p) => p.replace(/^["']|["']$/g, "").trim());
+      if (parts.length >= 2) {
+        const codeVal = parts[0] || `PROJ-0${projects.length + list.length + 1}`;
+        const titleVal = parts[1] || "";
+        const categoryVal = parts[2] || "Geral";
+        const membersVal = parts[3] || "Alunos da Turma";
+        const advisorVal = parts[4] || "";
+        const standVal = parts[5] || `Estande ${list.length + 1}`;
+
+        if (titleVal) {
+          list.push({
+            code: codeVal,
+            title: titleVal,
+            category: categoryVal,
+            members: membersVal,
+            advisor: advisorVal || null,
+            stand: standVal || null,
+            assigned_evaluators: [],
+          });
+        }
+      }
+    });
+
+    if (list.length === 0) {
+      setCsvError("Nenhum projeto válido encontrado. Certifique-se de informar pelo menos Código e Título.");
+    }
+    setParsedProjects(list);
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const text = event.target?.result as string;
+      setCsvText(text);
+      parseProjectsCSV(text);
+    };
+    reader.readAsText(file, "UTF-8");
+  };
+
+  const handleDownloadProjectsTemplate = () => {
+    const csvContent =
+      "Codigo,Titulo,Categoria,Integrantes,Orientador,Estande\n" +
+      "PROJ-01,\"Biofiltro de Baixo Custo para Comunidades\",\"Sustentabilidade e Meio Ambiente\",\"Lucas Andrade, Beatriz Costa\",\"Profa. Mariana\",\"Estande A-01\"\n" +
+      "PROJ-02,\"Braço Robótico Articulado 3D com IA\",\"Robótica e Inteligência Artificial\",\"Gabriel Santos, Enzo Carvalho\",\"Prof. Carlos\",\"Estande B-04\"\n" +
+      "PROJ-03,\"Produção de Bioplástico de Mandioca\",\"Química e Biologia Aplicada\",\"Camila Ribeiro, Larissa Lima\",\"Profa. Helena\",\"Estande A-02\"\n";
+
+    const blob = new Blob(["\uFEFF" + csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", "modelo_importacao_projetos.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleConfirmProjectsImport = async () => {
+    if (parsedProjects.length === 0) return;
+    setIsImporting(true);
+    setCsvError("");
+    try {
+      if (onBatchCreateProjects) {
+        await onBatchCreateProjects(parsedProjects);
+      } else {
+        for (const proj of parsedProjects) {
+          await onCreateProject(proj);
+        }
+      }
+      setIsCSVModalOpen(false);
+      setParsedProjects([]);
+      setCsvText("");
+    } catch (err: any) {
+      setCsvError(err?.message || "Erro ao salvar lote de projetos.");
+    } finally {
+      setIsImporting(false);
+    }
+  };
 
   const openCreateModal = () => {
     setEditingProject(null);
@@ -132,13 +238,29 @@ export default function ProjectsCrud({
           />
         </div>
 
-        <button
-          onClick={openCreateModal}
-          className="inline-flex items-center justify-center gap-2 rounded-xl bg-teal-600 px-5 py-2.5 text-xs sm:text-sm font-bold text-white shadow-md shadow-teal-600/25 hover:bg-teal-700 transition active:scale-98 cursor-pointer"
-        >
-          <Plus className="h-4 w-4" />
-          <span>Cadastrar Novo Projeto</span>
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              setCsvText("");
+              setParsedProjects([]);
+              setCsvError("");
+              setIsCSVModalOpen(true);
+            }}
+            className="inline-flex items-center gap-1.5 rounded-2xl border border-teal-300 bg-teal-50 hover:bg-teal-100/80 px-4 py-2.5 text-xs font-bold text-teal-900 transition active:scale-98 cursor-pointer shadow-2xs"
+          >
+            <Upload className="h-4 w-4 text-teal-700" />
+            <span>Subir CSV de Projetos</span>
+          </button>
+
+          <button
+            onClick={openCreateModal}
+            className="inline-flex items-center justify-center gap-2 rounded-2xl bg-teal-600 px-5 py-2.5 text-xs sm:text-sm font-bold text-white shadow-md shadow-teal-600/25 hover:bg-teal-700 transition active:scale-98 cursor-pointer"
+          >
+            <Plus className="h-4 w-4" />
+            <span>Cadastrar Novo Projeto</span>
+          </button>
+        </div>
       </div>
 
       {/* Lista / Tabela de Projetos */}
@@ -397,6 +519,151 @@ export default function ProjectsCrud({
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: IMPORTAR PROJETOS VIA CSV */}
+      {isCSVModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs overflow-y-auto">
+          <div className="w-full max-w-2xl rounded-3xl bg-white p-6 sm:p-8 shadow-2xl transition-all my-8">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-teal-100 text-teal-700">
+                  <FileSpreadsheet className="h-6 w-6" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-black text-slate-900">
+                    Importar Projetos via CSV
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Cadastre estandes e projetos da feira em lote a partir de uma planilha
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsCSVModalOpen(false)}
+                className="rounded-xl p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="mt-5 space-y-4">
+              {csvError && (
+                <div className="flex items-center gap-2 rounded-2xl bg-rose-50 border border-rose-200 p-3 text-xs font-bold text-rose-700">
+                  <AlertCircle className="h-4 w-4 shrink-0 text-rose-600" />
+                  <span>{csvError}</span>
+                </div>
+              )}
+
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".csv,.txt"
+                    onChange={handleFileUpload}
+                    className="hidden"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 px-3 py-2 text-xs font-bold text-slate-700 transition"
+                  >
+                    <Upload className="h-3.5 w-3.5 text-teal-600" />
+                    <span>Selecionar Arquivo CSV</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleDownloadProjectsTemplate}
+                    className="inline-flex items-center gap-1.5 rounded-xl text-teal-700 hover:text-teal-900 px-3 py-2 text-xs font-bold underline"
+                  >
+                    <Download className="h-3.5 w-3.5" />
+                    <span>Baixar Modelo de Exemplo</span>
+                  </button>
+                </div>
+
+                <span className="text-[11px] text-slate-400">
+                  Colunas: Codigo, Titulo, Categoria, Integrantes, Orientador, Estande
+                </span>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
+                  Ou Cole as Linhas do CSV Diretamente:
+                </label>
+                <textarea
+                  rows={4}
+                  value={csvText}
+                  onChange={(e) => {
+                    setCsvText(e.target.value);
+                    parseProjectsCSV(e.target.value);
+                  }}
+                  placeholder={"PROJ-01,Biofiltro de Baixo Custo,Sustentabilidade,Lucas e Beatriz,Profa. Mariana,Estande A-01"}
+                  className="w-full rounded-2xl border border-slate-200 p-3 text-xs text-slate-900 font-mono placeholder:text-slate-400 focus:border-teal-600 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
+                />
+              </div>
+
+              {parsedProjects.length > 0 && (
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-black uppercase tracking-wider text-slate-800">
+                      Pré-visualização: {parsedProjects.length} Projetos Detectados
+                    </span>
+                  </div>
+
+                  <div className="max-h-56 overflow-y-auto rounded-2xl border border-slate-200 bg-slate-50">
+                    <table className="w-full text-left text-xs">
+                      <thead className="bg-slate-100 text-[10px] font-black uppercase text-slate-600 sticky top-0">
+                        <tr>
+                          <th className="px-3 py-2">Código</th>
+                          <th className="px-3 py-2">Título</th>
+                          <th className="px-3 py-2">Categoria</th>
+                          <th className="px-3 py-2">Estande</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-200/60 bg-white">
+                        {parsedProjects.map((p, idx) => (
+                          <tr key={idx}>
+                            <td className="px-3 py-2 font-bold text-teal-800">{p.code}</td>
+                            <td className="px-3 py-2 font-medium text-slate-900">{p.title}</td>
+                            <td className="px-3 py-2 text-slate-500 text-[11px]">{p.category}</td>
+                            <td className="px-3 py-2 text-slate-500 text-[11px]">{p.stand || "-"}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="mt-6 flex items-center justify-end gap-3 border-t border-slate-100 pt-4">
+              <button
+                type="button"
+                onClick={() => setIsCSVModalOpen(false)}
+                className="rounded-xl px-4 py-2.5 text-xs font-semibold text-slate-600 hover:bg-slate-100"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                disabled={parsedProjects.length === 0 || isImporting}
+                onClick={handleConfirmProjectsImport}
+                className="inline-flex items-center gap-2 rounded-xl bg-teal-600 px-6 py-2.5 text-xs sm:text-sm font-bold text-white shadow-md shadow-teal-600/25 hover:bg-teal-700 disabled:opacity-50 cursor-pointer"
+              >
+                {isImporting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span>Cadastrando...</span>
+                  </>
+                ) : (
+                  <span>Cadastrar {parsedProjects.length} Projetos no Sistema</span>
+                )}
+              </button>
+            </div>
           </div>
         </div>
       )}

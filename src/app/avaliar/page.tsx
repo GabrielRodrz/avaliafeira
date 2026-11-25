@@ -18,6 +18,7 @@ import {
   BookmarkCheck,
   AlertCircle,
   RefreshCw,
+  Lock,
 } from "lucide-react";
 import EvaluatorHeader from "@/components/evaluator/EvaluatorHeader";
 import EvaluatorNameModal from "@/components/evaluator/EvaluatorNameModal";
@@ -470,19 +471,24 @@ export default function EvaluatorProjectsPage() {
                       10 critérios oficiais (0 a 10 pts)
                     </span>
 
-                    <Link
-                      href={`/avaliar/${project.id}`}
-                      className={`inline-flex items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-xs sm:text-sm font-bold transition shadow-xs active:scale-98 ${
-                        isEvaluated
-                          ? "bg-emerald-50 text-emerald-800 border border-emerald-200 hover:bg-emerald-100"
-                          : isAssigned
-                          ? "bg-teal-700 text-white shadow-teal-700/20 hover:bg-teal-800"
-                          : "bg-slate-900 text-white hover:bg-slate-800"
-                      }`}
-                    >
-                      <span>{isEvaluated ? "Editar Minha Avaliação" : "Avaliar Projeto"}</span>
-                      <ChevronRight className="h-4 w-4" />
-                    </Link>
+                    {isAssigned ? (
+                      <Link
+                        href={`/avaliar/${project.id}`}
+                        className={`inline-flex items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-xs sm:text-sm font-bold transition shadow-xs active:scale-98 ${
+                          isEvaluated
+                            ? "bg-emerald-50 text-emerald-800 border border-emerald-200 hover:bg-emerald-100"
+                            : "bg-teal-700 text-white shadow-teal-700/20 hover:bg-teal-800"
+                        }`}
+                      >
+                        <span>{isEvaluated ? "Editar Minha Avaliação" : "Avaliar Projeto"}</span>
+                        <ChevronRight className="h-4 w-4" />
+                      </Link>
+                    ) : (
+                      <div className="inline-flex items-center gap-1.5 rounded-xl bg-slate-100 border border-slate-200 px-3.5 py-2 text-xs font-bold text-slate-400 select-none cursor-not-allowed">
+                        <Lock className="h-3.5 w-3.5" />
+                        <span>Não atribuído para sua escala</span>
+                      </div>
+                    )}
                   </div>
                 </div>
               );
