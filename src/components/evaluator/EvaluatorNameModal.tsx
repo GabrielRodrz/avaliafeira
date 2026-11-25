@@ -3,14 +3,12 @@
 import { useState, useEffect } from "react";
 import {
   UserCheck,
-  Sparkles,
   Hash,
   User,
   ArrowRight,
   ShieldCheck,
   AlertCircle,
-  CheckCircle2,
-  Edit3,
+  Sparkles,
 } from "lucide-react";
 import { Evaluator } from "@/types";
 
@@ -24,14 +22,6 @@ interface EvaluatorNameModalProps {
   availableEvaluators?: Evaluator[];
 }
 
-const DEFAULT_FALLBACK_CODES = [
-  { code: "AV-01", name: null },
-  { code: "AV-02", name: null },
-  { code: "AV-03", name: null },
-  { code: "AV-04", name: null },
-  { code: "AV-05", name: null },
-];
-
 export default function EvaluatorNameModal({
   isOpen,
   currentCode,
@@ -41,18 +31,13 @@ export default function EvaluatorNameModal({
   canCancel = false,
   availableEvaluators = [],
 }: EvaluatorNameModalProps) {
-  const [code, setCode] = useState(currentCode || "");
+  const [code, setCode] = useState(currentCode ? currentCode.replace(/\D/g, "") : "");
   const [name, setName] = useState(currentName || "");
-  const [isManualInput, setIsManualInput] = useState(false);
   const [error, setError] = useState("");
-
-  // Lista combinada de avaliadores disponíveis
-  const evaluatorsList =
-    availableEvaluators.length > 0 ? availableEvaluators : DEFAULT_FALLBACK_CODES;
 
   useEffect(() => {
     if (currentCode) {
-      setCode(currentCode.toUpperCase());
+      setCode(currentCode.replace(/\D/g, ""));
     }
     if (currentName) {
       setName(currentName);
@@ -61,46 +46,39 @@ export default function EvaluatorNameModal({
 
   if (!isOpen) return null;
 
-  // Ao clicar em uma matrícula da lista
-  const handleSelectEvaluatorCard = (selectedCode: string, existingName?: string | null) => {
-    const upper = selectedCode.toUpperCase();
-    setCode(upper);
-    setError("");
-
-    if (existingName) {
-      setName(existingName);
-    } else if (!name) {
-      setName("");
-    }
-  };
-
-  const handleManualCodeChange = (newCode: string) => {
-    const upper = newCode.toUpperCase();
-    setCode(upper);
+  const handleCodeChange = (raw: string) => {
+    // Permite SOMENTE NÚMEROS
+    const numericOnly = raw.replace(/\D/g, "");
+    setCode(numericOnly);
     if (error) setError("");
 
-    const found = evaluatorsList.find((e) => e.code.toUpperCase() === upper);
-    if (found && found.name && !name) {
-      setName(found.name);
+    // Se a matrícula existir e já tiver um nome vinculado, sugere o nome
+    if (numericOnly) {
+      const found = availableEvaluators.find(
+        (e) => e.code.replace(/\D/g, "") === numericOnly
+      );
+      if (found && found.name && !name) {
+        setName(found.name);
+      }
     }
   };
 
-  const selectedEvaluatorInfo = evaluatorsList.find(
-    (e) => e.code.toUpperCase() === code.trim().toUpperCase()
+  const selectedEvaluator = availableEvaluators.find(
+    (e) => e.code.replace(/\D/g, "") === code.trim()
   );
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const cleanCode = code.trim().toUpperCase();
+    const cleanCode = code.trim().replace(/\D/g, "");
     const cleanName = name.trim();
 
     if (!cleanCode) {
-      setError("Por favor, selecione ou digite sua matrícula de jurado.");
+      setError("Por favor, digite o número da sua matrícula (somente números).");
       return;
     }
 
     if (cleanName.length < 3) {
-      setError("Por favor, digite seu nome completo (mínimo de 3 caracteres) para identificar suas notas.");
+      setError("Por favor, digite seu nome completo (mínimo de 3 caracteres).");
       return;
     }
 
@@ -110,7 +88,7 @@ export default function EvaluatorNameModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 p-4 backdrop-blur-xs overflow-y-auto">
-      <div className="w-full max-w-lg rounded-3xl bg-white p-6 sm:p-8 shadow-2xl ring-1 ring-slate-900/10 transition-all my-8">
+      <div className="w-full max-w-md rounded-3xl bg-white p-6 sm:p-8 shadow-2xl ring-1 ring-slate-900/10 transition-all my-8">
         {/* Cabeçalho */}
         <div className="flex items-center gap-3.5 border-b border-slate-100 pb-4">
           <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-teal-600 text-white shadow-lg shadow-teal-600/30">
@@ -118,10 +96,10 @@ export default function EvaluatorNameModal({
           </div>
           <div>
             <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
-              Identificação do Avaliador
+              Identificação do Jurado
             </h2>
             <p className="text-xs sm:text-sm text-slate-500 font-medium">
-              Escolha sua matrícula para carregar os projetos designados a você
+              Digite o número da sua matrícula para acessar seus projetos
             </p>
           </div>
         </div>
@@ -134,86 +112,42 @@ export default function EvaluatorNameModal({
             </div>
           )}
 
-          {/* 1. SELEÇÃO DA MATRÍCULA EM DESTAQUE */}
+          {/* Campo Matrícula (Apenas Números) */}
           <div>
-            <div className="flex items-center justify-between mb-2">
-              <label className="text-xs font-black uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+            <label className="block text-xs font-black uppercase tracking-wider text-slate-700 mb-1.5 flex items-center justify-between">
+              <span className="flex items-center gap-1.5">
                 <Hash className="h-4 w-4 text-teal-600" />
-                <span>1. Escolha sua Matrícula de Jurado:</span>
-              </label>
+                <span>Número da Matrícula (Somente Números) *</span>
+              </span>
+              <span className="text-[10px] font-bold text-teal-700 bg-teal-50 border border-teal-200 px-2 py-0.5 rounded-md">
+                Apenas dígitos
+              </span>
+            </label>
 
-              <button
-                type="button"
-                onClick={() => setIsManualInput(!isManualInput)}
-                className="text-[11px] font-bold text-teal-700 hover:text-teal-900 underline flex items-center gap-1"
-              >
-                <Edit3 className="h-3 w-3" />
-                <span>{isManualInput ? "Ver botões de seleção" : "Digitar outra matrícula"}</span>
-              </button>
+            <div className="relative mt-1">
+              <input
+                type="tel"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                required
+                autoFocus
+                value={code}
+                onChange={(e) => handleCodeChange(e.target.value)}
+                placeholder="Ex: 101"
+                maxLength={8}
+                className="w-full rounded-2xl border-2 border-teal-500 bg-teal-50/30 py-4 px-4 text-center text-3xl sm:text-4xl font-mono font-black tracking-widest text-teal-950 placeholder:text-slate-300 focus:border-teal-600 focus:bg-white focus:outline-none focus:ring-4 focus:ring-teal-500/20 transition shadow-inner"
+              />
             </div>
-
-            {!isManualInput ? (
-              <div className="space-y-2">
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-                  {evaluatorsList.map((ev) => {
-                    const isSelected = code.trim().toUpperCase() === ev.code.toUpperCase();
-                    return (
-                      <button
-                        key={ev.code}
-                        type="button"
-                        onClick={() => handleSelectEvaluatorCard(ev.code, ev.name)}
-                        className={`group relative flex flex-col items-center justify-center p-3.5 rounded-2xl border-2 transition-all cursor-pointer text-center ${
-                          isSelected
-                            ? "border-teal-600 bg-teal-50/80 shadow-md ring-2 ring-teal-500/25"
-                            : "border-slate-200 bg-white hover:border-teal-400 hover:bg-slate-50"
-                        }`}
-                      >
-                        {isSelected && (
-                          <div className="absolute top-2 right-2">
-                            <CheckCircle2 className="h-4 w-4 text-teal-600" />
-                          </div>
-                        )}
-                        <span
-                          className={`text-lg sm:text-xl font-black font-mono tracking-wider transition ${
-                            isSelected ? "text-teal-800 scale-105" : "text-slate-900 group-hover:text-teal-700"
-                          }`}
-                        >
-                          {ev.code}
-                        </span>
-                        <span className="mt-1 text-[11px] font-semibold text-slate-500 truncate max-w-full">
-                          {ev.name ? ev.name.split(" ")[0] : "Disponível"}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-                <p className="text-[11px] text-slate-400 text-center">
-                  Toque na sua matrícula acima para selecionar.
-                </p>
-              </div>
-            ) : (
-              <div>
-                <div className="relative mt-1">
-                  <Hash className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
-                  <input
-                    type="text"
-                    required
-                    autoFocus
-                    value={code}
-                    onChange={(e) => handleManualCodeChange(e.target.value)}
-                    placeholder="DIGITE A MATRÍCULA (EX: AV-01)"
-                    className="w-full rounded-2xl border-2 border-teal-500 bg-teal-50/30 py-3.5 pl-12 pr-4 text-center text-xl sm:text-2xl font-black font-mono uppercase tracking-widest text-slate-900 placeholder:text-slate-400 placeholder:text-sm focus:border-teal-600 focus:outline-none focus:ring-4 focus:ring-teal-500/20"
-                  />
-                </div>
-              </div>
-            )}
+            <p className="mt-1.5 text-[11px] text-slate-500 text-center font-medium">
+              Digite o código numérico fornecido pela organização (ex: <strong>101</strong>, <strong>102</strong>, <strong>103</strong>).
+            </p>
           </div>
 
-          {/* 2. CONFIRMAÇÃO DO NOME DO AVALIADOR */}
+          {/* Campo Nome do Avaliador */}
           <div>
             <label className="block text-xs font-black uppercase tracking-wider text-slate-700 mb-1.5 flex items-center gap-1.5">
               <User className="h-4 w-4 text-teal-600" />
-              <span>2. Seu Nome Completo (digitado na hora) *</span>
+              <span>Seu Nome Completo (digitado na hora) *</span>
             </label>
             <div className="relative">
               <User className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
@@ -230,11 +164,11 @@ export default function EvaluatorNameModal({
               />
             </div>
             <p className="mt-1 text-[11px] text-slate-500">
-              Este nome aparecerá nas fichas que você avaliar e assinar.
+              Seu nome ficará registrado em cada projeto que você avaliar.
             </p>
           </div>
 
-          {/* 3. QUADRO DE CONFERÊNCIA ANTI-ERRO */}
+          {/* Quadro de Conferência e Destaque */}
           {code.trim() && (
             <div className="rounded-2xl border-2 border-teal-500/80 bg-linear-to-r from-teal-50 to-emerald-50 p-4 shadow-xs">
               <div className="flex items-center justify-between">
@@ -244,19 +178,19 @@ export default function EvaluatorNameModal({
                     Confirmação de Acesso
                   </span>
                 </div>
-                <span className="rounded-lg bg-teal-800 text-white px-2.5 py-1 text-xs font-black tracking-wider font-mono">
-                  {code.trim().toUpperCase()}
+                <span className="rounded-xl bg-teal-800 text-white px-3 py-1 text-sm font-black tracking-wider font-mono shadow-xs">
+                  MATRÍCULA {code.trim()}
                 </span>
               </div>
 
               <div className="mt-2 text-xs text-teal-950 font-medium space-y-1">
                 <p>
-                  Você está se identificando como o jurado da <strong>Matrícula {code.trim().toUpperCase()}</strong>.
+                  Você está acessando a escala da <strong>Matrícula Nº {code.trim()}</strong>.
                 </p>
-                {selectedEvaluatorInfo?.name && selectedEvaluatorInfo.name !== name && (
-                  <p className="rounded-lg bg-amber-100 border border-amber-300 p-2 text-amber-900 text-[11px] font-semibold mt-1">
-                    ⚠️ Atenção: Esta matrícula já possui registro prévio no nome de:{" "}
-                    <strong>{selectedEvaluatorInfo.name}</strong>. Se você não é esta pessoa, escolha outra matrícula.
+                {selectedEvaluator?.name && selectedEvaluator.name !== name && (
+                  <p className="rounded-xl bg-amber-100 border border-amber-300 p-2 text-amber-900 text-[11px] font-semibold mt-1">
+                    ⚠️ Esta matrícula já possui registro prévio no nome de:{" "}
+                    <strong>{selectedEvaluator.name}</strong>. Confirme se você é este jurado.
                   </p>
                 )}
               </div>
@@ -279,7 +213,7 @@ export default function EvaluatorNameModal({
               disabled={!code.trim() || !name.trim()}
               className="w-full sm:w-auto rounded-2xl bg-teal-600 px-7 py-3 text-sm font-black text-white shadow-lg shadow-teal-600/25 hover:bg-teal-700 focus:ring-4 focus:ring-teal-500/30 focus:outline-none transition-all active:scale-98 disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer"
             >
-              <span>Confirmar e Acessar como {code.trim().toUpperCase() || "Avaliador"}</span>
+              <span>Acessar como Matrícula {code.trim() || "..."}</span>
               <ArrowRight className="h-4 w-4" />
             </button>
           </div>

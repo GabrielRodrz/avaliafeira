@@ -134,11 +134,11 @@ where not exists (select 1 from public.projects);
 -- Inserir Avaliadores Iniciais (se vazio)
 insert into public.evaluators (code, name)
 select * from (values
-  ('AV-01', 'Dra. Renata Vasconcelos'),
-  ('AV-02', 'Prof. André Valente'),
-  ('AV-03', 'Profa. Camila Guimarães'),
-  ('AV-04', null),
-  ('AV-05', null)
+  ('101', 'Dra. Renata Vasconcelos'),
+  ('102', 'Prof. André Valente'),
+  ('103', 'Profa. Camila Guimarães'),
+  ('104', null),
+  ('105', null)
 ) as e(code, name)
 where not exists (select 1 from public.evaluators);
 
@@ -146,23 +146,23 @@ where not exists (select 1 from public.evaluators);
 insert into public.project_evaluators (project_id, evaluator_code)
 select p.id, e.code
 from public.projects p
-cross join (values ('AV-01'), ('AV-02')) as e(code)
+cross join (values ('101'), ('102')) as e(code)
 where p.code = 'PROJ-01'
-  and not exists (select 1 from public.project_evaluators where evaluator_code = 'AV-01' and project_id = p.id);
+  and not exists (select 1 from public.project_evaluators where evaluator_code = '101' and project_id = p.id);
 
 insert into public.project_evaluators (project_id, evaluator_code)
 select p.id, e.code
 from public.projects p
-cross join (values ('AV-02'), ('AV-03')) as e(code)
+cross join (values ('102'), ('103')) as e(code)
 where p.code = 'PROJ-02'
-  and not exists (select 1 from public.project_evaluators where evaluator_code = 'AV-02' and project_id = p.id);
+  and not exists (select 1 from public.project_evaluators where evaluator_code = '102' and project_id = p.id);
 
 insert into public.project_evaluators (project_id, evaluator_code)
 select p.id, e.code
 from public.projects p
-cross join (values ('AV-01'), ('AV-03')) as e(code)
+cross join (values ('101'), ('103')) as e(code)
 where p.code = 'PROJ-03'
-  and not exists (select 1 from public.project_evaluators where evaluator_code = 'AV-01' and project_id = p.id);
+  and not exists (select 1 from public.project_evaluators where evaluator_code = '101' and project_id = p.id);
 
 -- ==============================================================================
 -- SEGURANÇA: ROW LEVEL SECURITY (RLS)

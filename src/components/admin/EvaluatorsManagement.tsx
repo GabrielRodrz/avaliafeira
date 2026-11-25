@@ -48,7 +48,7 @@ export default function EvaluatorsManagement({
 
   const openCreateModal = () => {
     setEditingEvaluator(null);
-    setCode(`AV-0${evaluators.length + 1}`);
+    setCode(String(100 + evaluators.length + 1));
     setName("");
     setSelectedProjects([]);
     setError("");
@@ -120,7 +120,7 @@ export default function EvaluatorsManagement({
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Buscar por matrícula (ex: AV-01) ou nome do jurado..."
+            placeholder="Buscar por matrícula (ex: 101) ou nome do jurado..."
             className="w-full rounded-xl border border-slate-300 bg-white py-2.5 pl-10 pr-4 text-xs sm:text-sm text-slate-900 placeholder:text-slate-400 focus:border-teal-600 focus:outline-none"
           />
         </div>
@@ -141,7 +141,7 @@ export default function EvaluatorsManagement({
           <span>Como funciona a Matrícula e Escala de Avaliação:</span>
         </div>
         <p className="text-teal-800 leading-relaxed">
-          Você cria as matrículas dos jurados (ex: <strong>AV-01</strong>, <strong>AV-02</strong>) e define quais projetos cada um deve avaliar. Ao abrir o aplicativo no celular, o jurado digita sua matrícula e seu próprio nome na hora, e o sistema exibe imediatamente a lista com os estandes e projetos designados para ele.
+          Você cria as matrículas numéricas dos jurados (ex: <strong>101</strong>, <strong>102</strong>) e define quais projetos cada um deve avaliar. Ao abrir o aplicativo no celular, o jurado digita sua matrícula numérica e seu próprio nome na hora, e o sistema exibe imediatamente a lista com os estandes e projetos designados para ele.
         </p>
       </div>
 
@@ -306,17 +306,19 @@ export default function EvaluatorsManagement({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-bold uppercase tracking-wider text-slate-700">
-                    Matrícula / Código *
+                    Matrícula Numérica *
                   </label>
                   <input
-                    type="text"
+                    type="tel"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
                     required
                     value={code}
-                    onChange={(e) => setCode(e.target.value.toUpperCase())}
-                    placeholder="Ex: AV-01 ou 101"
-                    className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-xs font-bold uppercase text-slate-900 focus:border-teal-600 focus:outline-none"
+                    onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
+                    placeholder="Ex: 101"
+                    className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-xs font-bold font-mono text-slate-900 focus:border-teal-600 focus:outline-none"
                   />
-                  <span className="text-[10px] text-slate-400">Código único informado pelo jurado.</span>
+                  <span className="text-[10px] text-slate-400">Somente números (ex: 101, 102).</span>
                 </div>
 
                 <div>
