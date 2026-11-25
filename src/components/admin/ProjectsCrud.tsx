@@ -1,28 +1,36 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { Plus, Edit2, Trash2, Search, MapPin, Users, GraduationCap, X, Loader2, BookmarkCheck, Upload, Download, FileSpreadsheet, AlertCircle } from "lucide-react";
-import { Project, Evaluator } from "@/types";
+import { Plus, Edit2, Trash2, Search, MapPin, Users, GraduationCap, X, Loader2, BookmarkCheck, Upload, Download, FileSpreadsheet, AlertCircle, Sparkles, Layers } from "lucide-react";
+import { Project, Evaluator, Evaluation, OFFICIAL_FAIR_CATEGORIES } from "@/types";
+import DistributionModal from "./DistributionModal";
 
 interface ProjectsCrudProps {
   projects: Project[];
   evaluators?: Evaluator[];
+  evaluations?: Evaluation[];
   onCreateProject: (project: Omit<Project, "id" | "created_at">) => Promise<void>;
   onBatchCreateProjects?: (list: Omit<Project, "id" | "created_at">[]) => Promise<void>;
   onUpdateProject: (id: string, project: Partial<Project>) => Promise<void>;
   onDeleteProject: (id: string) => Promise<void>;
+  onApplyDistribution?: (allocations: { projectId: string; evaluatorCodes: string[] }[]) => Promise<void>;
+  onSeed40Projects?: () => Promise<void>;
 }
 
 export default function ProjectsCrud({
   projects,
   evaluators = [],
+  evaluations = [],
   onCreateProject,
   onBatchCreateProjects,
   onUpdateProject,
   onDeleteProject,
+  onApplyDistribution,
+  onSeed40Projects,
 }: ProjectsCrudProps) {
   const [search, setSearch] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isDistributionModalOpen, setIsDistributionModalOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
 
   // Estados do Modal de Importação CSV
@@ -36,7 +44,7 @@ export default function ProjectsCrud({
   // Form states
   const [code, setCode] = useState("");
   const [title, setTitle] = useState("");
-  const [category, setCategory] = useState("Sustentabilidade e Meio Ambiente");
+  const [category, setCategory] = useState("Júnior");
   const [members, setMembers] = useState("");
   const [advisor, setAdvisor] = useState("");
   const [stand, setStand] = useState("");
@@ -144,7 +152,7 @@ export default function ProjectsCrud({
     setEditingProject(null);
     setCode(`PROJ-0${projects.length + 1}`);
     setTitle("");
-    setCategory("Sustentabilidade e Meio Ambiente");
+    setCategory("Júnior");
     setMembers("");
     setAdvisor("");
     setStand(`Estande ${String.fromCharCode(65 + Math.floor(projects.length / 5))}-0${(projects.length % 5) + 1}`);
@@ -239,6 +247,17 @@ export default function ProjectsCrud({
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          {/* Botão Distribuição Equilibrada Automática (1 Clique) */}
+          <button
+            type="button"
+            onClick={() => setIsDistributionModalOpen(true)}
+            title="Distribuir 40 projetos equilibradamente entre avaliadores em 1 clique"
+            className="inline-flex items-center gap-1.5 rounded-2xl border border-indigo-300 bg-gradient-to-r from-indigo-50 to-purple-50 hover:from-indigo-100 hover:to-purple-100 px-4 py-2.5 text-xs font-black text-indigo-950 transition active:scale-98 cursor-pointer shadow-xs"
+          >
+            <Sparkles className="h-4 w-4 text-indigo-600 animate-pulse" />
+            <span>Distribuir Projetos (1 Clique)</span>
+          </button>
+
           <button
             type="button"
             onClick={() => {
@@ -429,16 +448,40 @@ export default function ProjectsCrud({
               </div>
 
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-700">
-                  Categoria Científica *
-                </label>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-700">
+                    Categoria da Feira (3 Oficiais: Júnior, Nemo, Médio) *
+                  </label>
+                  <span className="text-[10px] font-semibold text-teal-700">
+                    Clique para selecionar rápido
+                  </span>
+                </div>
+
+                {/* Seletores rápidos das 3 categorias oficiais */}
+                <div className="flex flex-wrap gap-2 mb-2">
+                  {OFFICIAL_FAIR_CATEGORIES.map((cat) => (
+                    <button
+                      key={cat}
+                      type="button"
+                      onClick={() => setCategory(cat)}
+                      className={`rounded-xl px-3.5 py-1.5 text-xs font-black transition border cursor-pointer ${
+                        category === cat
+                          ? "bg-teal-700 text-white border-teal-700 shadow-xs"
+                          : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100"
+                      }`}
+                    >
+                      {cat} {category === cat && "✓"}
+                    </button>
+                  ))}
+                </div>
+
                 <input
                   type="text"
                   required
                   value={category}
                   onChange={(e) => setCategory(e.target.value)}
-                  placeholder="Ex: Sustentabilidade e Meio Ambiente"
-                  className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-xs font-medium text-slate-900 focus:border-teal-600 focus:outline-none"
+                  placeholder="Ex: Júnior, Nemo, Médio..."
+                  className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs font-medium text-slate-900 focus:border-teal-600 focus:outline-none"
                 />
               </div>
 
@@ -667,6 +710,21 @@ export default function ProjectsCrud({
           </div>
         </div>
       )}
+
+      {/* Modal de Distribuição Equilibrada de Projetos */}
+      <DistributionModal
+        isOpen={isDistributionModalOpen}
+        onClose={() => setIsDistributionModalOpen(false)}
+        projects={projects}
+        evaluators={evaluators}
+        evaluations={evaluations}
+        onApplyDistribution={async (allocs) => {
+          if (onApplyDistribution) {
+            await onApplyDistribution(allocs);
+          }
+        }}
+        onSeed40Projects={onSeed40Projects}
+      />
     </div>
   );
 }

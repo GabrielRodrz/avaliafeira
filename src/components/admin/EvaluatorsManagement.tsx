@@ -20,6 +20,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { Evaluator, Project, Evaluation } from "@/types";
+import DistributionModal from "./DistributionModal";
 
 interface EvaluatorsManagementProps {
   evaluators: Evaluator[];
@@ -34,6 +35,10 @@ interface EvaluatorsManagementProps {
     list: { code: string; name?: string | null; assignedProjects?: string[] }[]
   ) => Promise<void>;
   onDeleteEvaluator: (code: string) => Promise<void>;
+  onApplyDistribution?: (
+    allocations: { projectId: string; evaluatorCodes: string[] }[]
+  ) => Promise<void>;
+  onSeed40Projects?: () => Promise<void>;
 }
 
 // Gerador de matrícula numérica aleatória única (4 dígitos: 1000 a 9999)
@@ -64,9 +69,12 @@ export default function EvaluatorsManagement({
   onCreateOrUpdateEvaluator,
   onBatchCreateEvaluators,
   onDeleteEvaluator,
+  onApplyDistribution,
+  onSeed40Projects,
 }: EvaluatorsManagementProps) {
   const [search, setSearch] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isDistributionModalOpen, setIsDistributionModalOpen] = useState(false);
   const [editingEvaluator, setEditingEvaluator] = useState<Evaluator | null>(null);
 
   // Form states (Cadastro individual)
@@ -353,6 +361,17 @@ export default function EvaluatorsManagement({
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          {/* Botão Distribuição Equilibrada Automática (1 Clique) */}
+          <button
+            type="button"
+            onClick={() => setIsDistributionModalOpen(true)}
+            title="Distribuir 40 projetos equilibradamente entre todos os avaliadores com 1 clique"
+            className="inline-flex items-center gap-1.5 rounded-2xl border border-indigo-300 bg-gradient-to-r from-indigo-50 to-purple-50 hover:from-indigo-100 hover:to-purple-100 px-4 py-2.5 text-xs font-black text-indigo-950 transition active:scale-98 cursor-pointer shadow-xs"
+          >
+            <Sparkles className="h-4 w-4 text-indigo-600 animate-pulse" />
+            <span>Distribuir Projetos (1 Clique)</span>
+          </button>
+
           {/* Botão Exportar Credenciais */}
           {evaluators.length > 0 && (
             <button
@@ -907,6 +926,21 @@ export default function EvaluatorsManagement({
           </div>
         </div>
       )}
+
+      {/* Modal de Distribuição Equilibrada de Projetos */}
+      <DistributionModal
+        isOpen={isDistributionModalOpen}
+        onClose={() => setIsDistributionModalOpen(false)}
+        projects={projects}
+        evaluators={evaluators}
+        evaluations={evaluations}
+        onApplyDistribution={async (allocs) => {
+          if (onApplyDistribution) {
+            await onApplyDistribution(allocs);
+          }
+        }}
+        onSeed40Projects={onSeed40Projects}
+      />
     </div>
   );
 }

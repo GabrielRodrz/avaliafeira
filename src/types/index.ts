@@ -1,3 +1,6 @@
+export const OFFICIAL_FAIR_CATEGORIES = ["Júnior", "Nemo", "Médio"] as const;
+export type FairCategory = (typeof OFFICIAL_FAIR_CATEGORIES)[number];
+
 export interface Criterion {
   id: number;
   order_num: number;

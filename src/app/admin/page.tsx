@@ -28,6 +28,8 @@ import {
   createOrUpdateEvaluatorsBatch,
   deleteEvaluator,
   subscribeToRealtimeEvaluations,
+  saveAllProjectAllocations,
+  seedOfficial40Projects,
 } from "@/lib/data-service";
 import { computeOfficialRanking } from "@/lib/ranking";
 import { getSupabaseClient, isSupabaseConfigured } from "@/lib/supabase/client";
@@ -212,6 +214,18 @@ export default function AdminPage() {
     await loadAllData();
   };
 
+  const handleApplyDistribution = async (
+    allocations: { projectId: string; evaluatorCodes: string[] }[]
+  ) => {
+    await saveAllProjectAllocations(allocations);
+    await loadAllData();
+  };
+
+  const handleSeed40Projects = async () => {
+    await seedOfficial40Projects();
+    await loadAllData();
+  };
+
   const handleSaveSettings = async (newSettings: Partial<FairSettings>) => {
     const updated = await saveFairSettings(newSettings);
     setSettings(updated);
@@ -280,10 +294,13 @@ export default function AdminPage() {
           <ProjectsCrud
             projects={projects}
             evaluators={evaluators}
+            evaluations={evaluations}
             onCreateProject={handleCreateProject}
             onBatchCreateProjects={handleBatchCreateProjects}
             onUpdateProject={handleUpdateProject}
             onDeleteProject={handleDeleteProject}
+            onApplyDistribution={handleApplyDistribution}
+            onSeed40Projects={handleSeed40Projects}
           />
         )}
 
@@ -295,6 +312,8 @@ export default function AdminPage() {
             onCreateOrUpdateEvaluator={handleCreateOrUpdateEvaluator}
             onBatchCreateEvaluators={handleBatchCreateEvaluators}
             onDeleteEvaluator={handleDeleteEvaluator}
+            onApplyDistribution={handleApplyDistribution}
+            onSeed40Projects={handleSeed40Projects}
           />
         )}
 

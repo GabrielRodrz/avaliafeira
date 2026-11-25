@@ -1,6 +1,6 @@
 import { getSupabaseClient, isSupabaseConfigured } from "./supabase/client";
 import { Criterion, Evaluation, FairSettings, Project, Evaluator, ProjectEvaluator, OFFICIAL_CRITERIA } from "@/types";
-import { INITIAL_EVALUATIONS, INITIAL_PROJECTS, INITIAL_SETTINGS, INITIAL_EVALUATORS } from "./mock-data";
+import { INITIAL_EVALUATIONS, INITIAL_PROJECTS, INITIAL_SETTINGS, INITIAL_EVALUATORS, SAMPLE_40_PROJECTS } from "./mock-data";
 
 const LOCAL_STORAGE_KEYS = {
   SETTINGS: "avaliafeira_settings",
@@ -334,6 +334,129 @@ export async function assignEvaluatorsToProject(
       JSON.stringify([...filteredAlloc, ...newAllocs])
     );
   }
+}
+
+/**
+ * Salva em lote todas as alocações da escala equilibrada
+ */
+export async function saveAllProjectAllocations(
+  allocations: { projectId: string; evaluatorCodes: string[] }[]
+): Promise<void> {
+  const supabase = getSupabaseClient();
+  const allRows: { project_id: string; evaluator_code: string }[] = [];
+
+  allocations.forEach((item) => {
+    item.evaluatorCodes.forEach((code) => {
+      const clean = code.trim().toUpperCase();
+      if (clean) {
+        allRows.push({ project_id: item.projectId, evaluator_code: clean });
+      }
+    });
+  });
+
+  if (supabase) {
+    try {
+      await supabase.from("project_evaluators").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+      if (allRows.length > 0) {
+        await supabase.from("project_evaluators").insert(allRows);
+      }
+    } catch (e) {
+      console.warn("Erro ao salvar todas as alocações no Supabase, usando local:", e);
+    }
+  }
+
+  // Atualizar cache local e localStorage
+  if (typeof window !== "undefined") {
+    const projects = await getProjects();
+    const allocMap = new Map<string, string[]>();
+    allocations.forEach((item) => {
+      allocMap.set(item.projectId, item.evaluatorCodes.map((c) => c.trim().toUpperCase()));
+    });
+
+    const updatedProjects = projects.map((p) => ({
+      ...p,
+      assigned_evaluators: allocMap.get(p.id) || [],
+    }));
+    localStorage.setItem(LOCAL_STORAGE_KEYS.PROJECTS, JSON.stringify(updatedProjects));
+
+    // Atualizar avaliadores com seus assigned_projects
+    const evaluators = await getEvaluators();
+    const evProjectMap = new Map<string, string[]>();
+    allocations.forEach((item) => {
+      item.evaluatorCodes.forEach((code) => {
+        const clean = code.trim().toUpperCase();
+        if (!evProjectMap.has(clean)) {
+          evProjectMap.set(clean, []);
+        }
+        evProjectMap.get(clean)!.push(item.projectId);
+      });
+    });
+
+    const updatedEvaluators = evaluators.map((ev) => ({
+      ...ev,
+      assigned_projects: evProjectMap.get(ev.code.toUpperCase()) || [],
+    }));
+    localStorage.setItem(LOCAL_STORAGE_KEYS.EVALUATORS, JSON.stringify(updatedEvaluators));
+
+    // Atualizar tabela de allocations
+    const newAllocs = allRows.map((r, idx) => ({
+      id: `alloc-${r.project_id}-${r.evaluator_code}-${idx}`,
+      project_id: r.project_id,
+      evaluator_code: r.evaluator_code,
+    }));
+    localStorage.setItem(LOCAL_STORAGE_KEYS.ALLOCATIONS, JSON.stringify(newAllocs));
+  }
+}
+
+/**
+ * Semear os 40 Projetos Oficiais divididos em Júnior (13), Nemo (14) e Médio (13)
+ */
+export async function seedOfficial40Projects(): Promise<Project[]> {
+  const supabase = getSupabaseClient();
+  if (supabase) {
+    try {
+      await supabase.from("project_evaluators").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+      await supabase.from("evaluations").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+      await supabase.from("projects").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+
+      const { data, error } = await supabase.from("projects").insert(
+        SAMPLE_40_PROJECTS.map((p) => ({
+          code: p.code,
+          title: p.title,
+          category: p.category,
+          members: p.members,
+          advisor: p.advisor,
+          stand: p.stand,
+        }))
+      ).select();
+
+      if (!error && data) {
+        if (typeof window !== "undefined") {
+          localStorage.setItem(LOCAL_STORAGE_KEYS.PROJECTS, JSON.stringify(data));
+          localStorage.setItem(LOCAL_STORAGE_KEYS.ALLOCATIONS, JSON.stringify([]));
+          localStorage.setItem(LOCAL_STORAGE_KEYS.EVALUATIONS, JSON.stringify([]));
+        }
+        return data as Project[];
+      }
+    } catch (e) {
+      console.warn("Erro ao semear 40 projetos no Supabase:", e);
+    }
+  }
+
+  // Fallback Local
+  const localList: Project[] = SAMPLE_40_PROJECTS.map((p, idx) => ({
+    ...p,
+    id: `proj-official-${idx + 1}`,
+    assigned_evaluators: [],
+    created_at: new Date().toISOString(),
+  }));
+
+  if (typeof window !== "undefined") {
+    localStorage.setItem(LOCAL_STORAGE_KEYS.PROJECTS, JSON.stringify(localList));
+    localStorage.setItem(LOCAL_STORAGE_KEYS.ALLOCATIONS, JSON.stringify([]));
+    localStorage.setItem(LOCAL_STORAGE_KEYS.EVALUATIONS, JSON.stringify([]));
+  }
+  return localList;
 }
 
 // ==============================================================================
