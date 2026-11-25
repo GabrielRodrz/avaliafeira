@@ -72,8 +72,8 @@ export default function EvaluatorNameModal({
     const cleanCode = code.trim().replace(/\D/g, "");
     const cleanName = name.trim();
 
-    if (!cleanCode) {
-      setError("Por favor, digite o número da sua matrícula (somente números).");
+    if (!cleanCode || cleanCode.length !== 6) {
+      setError("Por favor, digite o número da sua matrícula com exatamente 6 dígitos (ex: 849201).");
       return;
     }
 
@@ -87,8 +87,8 @@ export default function EvaluatorNameModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 p-4 backdrop-blur-xs overflow-y-auto">
-      <div className="w-full max-w-md rounded-3xl bg-white p-6 sm:p-8 shadow-2xl ring-1 ring-slate-900/10 transition-all my-8">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 p-3 sm:p-4 backdrop-blur-xs overflow-y-auto">
+      <div className="w-full max-w-md rounded-3xl bg-white p-5 sm:p-8 shadow-2xl ring-1 ring-slate-900/10 transition-all my-auto">
         {/* Cabeçalho */}
         <div className="flex items-center gap-3.5 border-b border-slate-100 pb-4">
           <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-teal-600 text-white shadow-lg shadow-teal-600/30">
@@ -133,13 +133,13 @@ export default function EvaluatorNameModal({
                 autoFocus
                 value={code}
                 onChange={(e) => handleCodeChange(e.target.value)}
-                placeholder="Ex: 101"
-                maxLength={8}
+                placeholder="Ex: 849201"
+                maxLength={6}
                 className="w-full rounded-2xl border-2 border-teal-500 bg-teal-50/30 py-4 px-4 text-center text-3xl sm:text-4xl font-mono font-black tracking-widest text-teal-950 placeholder:text-slate-300 focus:border-teal-600 focus:bg-white focus:outline-none focus:ring-4 focus:ring-teal-500/20 transition shadow-inner"
               />
             </div>
             <p className="mt-1.5 text-[11px] text-slate-500 text-center font-medium">
-              Digite o código numérico fornecido pela organização (ex: <strong>101</strong>, <strong>102</strong>, <strong>103</strong>).
+              Digite o código de 6 dígitos numéricos fornecido pela coordenação (ex: <strong>849201</strong>).
             </p>
           </div>
 

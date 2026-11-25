@@ -151,7 +151,7 @@ export default function EvaluatorProjectsPage() {
         searchQuery === "" ||
         p.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         p.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        p.members.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (p.members && p.members.toLowerCase().includes(searchQuery.toLowerCase())) ||
         (p.advisor && p.advisor.toLowerCase().includes(searchQuery.toLowerCase())) ||
         (p.stand && p.stand.toLowerCase().includes(searchQuery.toLowerCase()));
 
@@ -271,7 +271,7 @@ export default function EvaluatorProjectsPage() {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Buscar por código (PROJ-01), título, estande, aluno ou orientador..."
+              placeholder="Buscar por código (PROJ-01), título, estande ou categoria..."
               className="w-full rounded-2xl border border-slate-200 bg-white py-3.5 pl-11 pr-4 text-sm font-medium text-slate-900 placeholder:text-slate-400 shadow-xs focus:border-teal-600 focus:outline-none focus:ring-2 focus:ring-teal-500/20 transition"
             />
           </div>
@@ -451,22 +451,8 @@ export default function EvaluatorProjectsPage() {
                     {project.title}
                   </h2>
 
-                  {/* Integrantes e Orientador */}
-                  <div className="mt-3 space-y-1 text-xs sm:text-sm text-slate-600">
-                    <div className="flex items-start gap-2">
-                      <Users className="h-4 w-4 shrink-0 text-slate-400 mt-0.5" />
-                      <span>{project.members}</span>
-                    </div>
-                    {project.advisor && (
-                      <div className="flex items-start gap-2">
-                        <GraduationCap className="h-4 w-4 shrink-0 text-slate-400 mt-0.5" />
-                        <span>Orientador: {project.advisor}</span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Botão de Ação */}
-                  <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between">
+                  {/* Botão de Ação Responsivo */}
+                  <div className="mt-4 pt-3 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5">
                     <span className="text-[11px] text-slate-400">
                       10 critérios oficiais (0 a 10 pts)
                     </span>
@@ -474,7 +460,7 @@ export default function EvaluatorProjectsPage() {
                     {isAssigned ? (
                       <Link
                         href={`/avaliar/${project.id}`}
-                        className={`inline-flex items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-xs sm:text-sm font-bold transition shadow-xs active:scale-98 ${
+                        className={`w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-2xl px-6 py-3 text-xs sm:text-sm font-bold transition shadow-xs active:scale-98 ${
                           isEvaluated
                             ? "bg-emerald-50 text-emerald-800 border border-emerald-200 hover:bg-emerald-100"
                             : "bg-teal-700 text-white shadow-teal-700/20 hover:bg-teal-800"
@@ -484,7 +470,7 @@ export default function EvaluatorProjectsPage() {
                         <ChevronRight className="h-4 w-4" />
                       </Link>
                     ) : (
-                      <div className="inline-flex items-center gap-1.5 rounded-xl bg-slate-100 border border-slate-200 px-3.5 py-2 text-xs font-bold text-slate-400 select-none cursor-not-allowed">
+                      <div className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 rounded-2xl bg-slate-100 border border-slate-200 px-4 py-2.5 text-xs font-bold text-slate-400 select-none cursor-not-allowed">
                         <Lock className="h-3.5 w-3.5" />
                         <span>Não atribuído para sua escala</span>
                       </div>

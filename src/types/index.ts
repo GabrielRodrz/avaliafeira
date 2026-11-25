@@ -15,17 +15,17 @@ export interface Project {
   code: string;
   title: string;
   category: string;
-  members: string;
-  advisor?: string | null;
   stand?: string | null;
-  assigned_evaluators?: string[]; // Matrículas numéricas dos avaliadores designados (ex: ["101", "102"])
+  members?: string;
+  advisor?: string | null;
+  assigned_evaluators?: string[]; // Matrículas numéricas dos avaliadores designados (ex: ["849201", "712394"])
   created_at?: string;
   updated_at?: string;
 }
 
 export interface Evaluator {
   id: string;
-  code: string; // Matrícula numérica do avaliador (ex: "101", "102")
+  code: string; // Matrícula numérica de 6 dígitos do avaliador (ex: "849201")
   name?: string | null; // Nome preenchido pelo jurado na hora ou pré-definido
   assigned_projects?: string[]; // IDs dos projetos que ele deve avaliar
   created_at?: string;

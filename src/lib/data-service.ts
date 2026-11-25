@@ -424,9 +424,9 @@ export async function seedOfficial40Projects(): Promise<Project[]> {
           code: p.code,
           title: p.title,
           category: p.category,
-          members: p.members,
-          advisor: p.advisor,
-          stand: p.stand,
+          members: p.members || "",
+          advisor: p.advisor || null,
+          stand: p.stand || null,
         }))
       ).select();
 
@@ -457,6 +457,30 @@ export async function seedOfficial40Projects(): Promise<Project[]> {
     localStorage.setItem(LOCAL_STORAGE_KEYS.EVALUATIONS, JSON.stringify([]));
   }
   return localList;
+}
+
+/**
+ * Limpa todos os projetos, avaliadores e notas de teste do sistema
+ */
+export async function clearAllData(): Promise<void> {
+  const supabase = getSupabaseClient();
+  if (supabase) {
+    try {
+      await supabase.from("evaluations").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+      await supabase.from("project_evaluators").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+      await supabase.from("projects").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+      await supabase.from("evaluators").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+    } catch (e) {
+      console.warn("Erro ao limpar dados no Supabase:", e);
+    }
+  }
+
+  if (typeof window !== "undefined") {
+    localStorage.removeItem(LOCAL_STORAGE_KEYS.PROJECTS);
+    localStorage.removeItem(LOCAL_STORAGE_KEYS.EVALUATORS);
+    localStorage.removeItem(LOCAL_STORAGE_KEYS.EVALUATIONS);
+    localStorage.removeItem(LOCAL_STORAGE_KEYS.ALLOCATIONS);
+  }
 }
 
 // ==============================================================================

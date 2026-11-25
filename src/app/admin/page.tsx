@@ -30,6 +30,7 @@ import {
   subscribeToRealtimeEvaluations,
   saveAllProjectAllocations,
   seedOfficial40Projects,
+  clearAllData,
 } from "@/lib/data-service";
 import { computeOfficialRanking } from "@/lib/ranking";
 import { getSupabaseClient, isSupabaseConfigured } from "@/lib/supabase/client";
@@ -226,6 +227,13 @@ export default function AdminPage() {
     await loadAllData();
   };
 
+  const handleClearAllData = async () => {
+    if (confirm("Atenção: deseja realmente limpar todos os projetos, avaliadores e notas de teste?")) {
+      await clearAllData();
+      await loadAllData();
+    }
+  };
+
   const handleSaveSettings = async (newSettings: Partial<FairSettings>) => {
     const updated = await saveFairSettings(newSettings);
     setSettings(updated);
@@ -301,6 +309,7 @@ export default function AdminPage() {
             onDeleteProject={handleDeleteProject}
             onApplyDistribution={handleApplyDistribution}
             onSeed40Projects={handleSeed40Projects}
+            onClearAllData={handleClearAllData}
           />
         )}
 
@@ -314,6 +323,7 @@ export default function AdminPage() {
             onDeleteEvaluator={handleDeleteEvaluator}
             onApplyDistribution={handleApplyDistribution}
             onSeed40Projects={handleSeed40Projects}
+            onClearAllData={handleClearAllData}
           />
         )}
 

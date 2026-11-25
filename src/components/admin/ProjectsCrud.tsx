@@ -15,6 +15,7 @@ interface ProjectsCrudProps {
   onDeleteProject: (id: string) => Promise<void>;
   onApplyDistribution?: (allocations: { projectId: string; evaluatorCodes: string[] }[]) => Promise<void>;
   onSeed40Projects?: () => Promise<void>;
+  onClearAllData?: () => Promise<void>;
 }
 
 export default function ProjectsCrud({
@@ -27,6 +28,7 @@ export default function ProjectsCrud({
   onDeleteProject,
   onApplyDistribution,
   onSeed40Projects,
+  onClearAllData,
 }: ProjectsCrudProps) {
   const [search, setSearch] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -71,18 +73,14 @@ export default function ProjectsCrud({
       if (parts.length >= 2) {
         const codeVal = parts[0] || `PROJ-0${projects.length + list.length + 1}`;
         const titleVal = parts[1] || "";
-        const categoryVal = parts[2] || "Geral";
-        const membersVal = parts[3] || "Alunos da Turma";
-        const advisorVal = parts[4] || "";
-        const standVal = parts[5] || `Estande ${list.length + 1}`;
+        const categoryVal = parts[2] || "Júnior";
+        const standVal = parts[3] || `Estande ${list.length + 1}`;
 
         if (titleVal) {
           list.push({
             code: codeVal,
             title: titleVal,
             category: categoryVal,
-            members: membersVal,
-            advisor: advisorVal || null,
             stand: standVal || null,
             assigned_evaluators: [],
           });
@@ -111,10 +109,10 @@ export default function ProjectsCrud({
 
   const handleDownloadProjectsTemplate = () => {
     const csvContent =
-      "Codigo,Titulo,Categoria,Integrantes,Orientador,Estande\n" +
-      "PROJ-01,\"Biofiltro de Baixo Custo para Comunidades\",\"Sustentabilidade e Meio Ambiente\",\"Lucas Andrade, Beatriz Costa\",\"Profa. Mariana\",\"Estande A-01\"\n" +
-      "PROJ-02,\"Braço Robótico Articulado 3D com IA\",\"Robótica e Inteligência Artificial\",\"Gabriel Santos, Enzo Carvalho\",\"Prof. Carlos\",\"Estande B-04\"\n" +
-      "PROJ-03,\"Produção de Bioplástico de Mandioca\",\"Química e Biologia Aplicada\",\"Camila Ribeiro, Larissa Lima\",\"Profa. Helena\",\"Estande A-02\"\n";
+      "Codigo,Titulo,Categoria,Estande\n" +
+      "PROJ-01,\"Biofiltro para Purificação de Água em Comunidades\",\"Júnior\",\"Estande J-01\"\n" +
+      "PROJ-02,\"Braço Robótico Articulado com Impressão 3D\",\"Nemo\",\"Estande N-01\"\n" +
+      "PROJ-03,\"Produção de Bioplástico de Mandioca\",\"Médio\",\"Estande M-01\"\n";
 
     const blob = new Blob(["\uFEFF" + csvContent], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
@@ -166,7 +164,7 @@ export default function ProjectsCrud({
     setCode(p.code);
     setTitle(p.title);
     setCategory(p.category);
-    setMembers(p.members);
+    setMembers(p.members || "");
     setAdvisor(p.advisor || "");
     setStand(p.stand || "");
     setAssignedEvaluators(p.assigned_evaluators || []);
@@ -184,8 +182,8 @@ export default function ProjectsCrud({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-    if (!code.trim() || !title.trim() || !members.trim()) {
-      setError("Código, Título e Integrantes/Turma são obrigatórios.");
+    if (!code.trim() || !title.trim()) {
+      setError("Código e Título são obrigatórios.");
       return;
     }
 
@@ -196,8 +194,6 @@ export default function ProjectsCrud({
           code: code.trim(),
           title: title.trim(),
           category: category.trim(),
-          members: members.trim(),
-          advisor: advisor.trim() || null,
           stand: stand.trim() || null,
           assigned_evaluators: assignedEvaluators,
         });
@@ -206,8 +202,6 @@ export default function ProjectsCrud({
           code: code.trim(),
           title: title.trim(),
           category: category.trim(),
-          members: members.trim(),
-          advisor: advisor.trim() || null,
           stand: stand.trim() || null,
           assigned_evaluators: assignedEvaluators,
         });
@@ -224,7 +218,7 @@ export default function ProjectsCrud({
     (p) =>
       p.title.toLowerCase().includes(search.toLowerCase()) ||
       p.code.toLowerCase().includes(search.toLowerCase()) ||
-      p.members.toLowerCase().includes(search.toLowerCase()) ||
+      (p.members && p.members.toLowerCase().includes(search.toLowerCase())) ||
       (p.advisor && p.advisor.toLowerCase().includes(search.toLowerCase())) ||
       (p.stand && p.stand.toLowerCase().includes(search.toLowerCase())) ||
       (p.assigned_evaluators &&
@@ -279,6 +273,18 @@ export default function ProjectsCrud({
             <Plus className="h-4 w-4" />
             <span>Cadastrar Novo Projeto</span>
           </button>
+
+          {onClearAllData && projects.length > 0 && (
+            <button
+              type="button"
+              onClick={onClearAllData}
+              title="Limpar projetos e dados de teste"
+              className="inline-flex items-center gap-1.5 rounded-2xl border border-rose-200 bg-rose-50 hover:bg-rose-100 px-3.5 py-2.5 text-xs font-bold text-rose-700 transition active:scale-95 cursor-pointer shadow-2xs"
+            >
+              <Trash2 className="h-4 w-4 text-rose-500" />
+              <span>Limpar Projetos</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -292,7 +298,6 @@ export default function ProjectsCrud({
                 <th className="px-4 py-3">Estande</th>
                 <th className="px-4 py-3 min-w-[200px]">Título do Projeto</th>
                 <th className="px-4 py-3">Categoria</th>
-                <th className="px-4 py-3 min-w-[170px]">Integrantes / Turma</th>
                 <th className="px-4 py-3 min-w-[150px]">Avaliadores Designados</th>
                 <th className="px-4 py-3 text-right">Ações</th>
               </tr>
@@ -300,7 +305,7 @@ export default function ProjectsCrud({
             <tbody className="divide-y divide-slate-100">
               {filteredProjects.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-4 py-8 text-center text-slate-400">
+                  <td colSpan={6} className="px-4 py-8 text-center text-slate-400">
                     Nenhum projeto encontrado.
                   </td>
                 </tr>
@@ -324,9 +329,6 @@ export default function ProjectsCrud({
                         <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-[11px] font-semibold text-slate-700">
                           {proj.category}
                         </span>
-                      </td>
-                      <td className="px-4 py-3 text-slate-700">
-                        {proj.members}
                       </td>
 
                       {/* Avaliadores Designados para este projeto */}
@@ -482,33 +484,6 @@ export default function ProjectsCrud({
                   onChange={(e) => setCategory(e.target.value)}
                   placeholder="Ex: Júnior, Nemo, Médio..."
                   className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs font-medium text-slate-900 focus:border-teal-600 focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-700">
-                  Integrantes e Turma / Série *
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={members}
-                  onChange={(e) => setMembers(e.target.value)}
-                  placeholder="Ex: Lucas Andrade, Beatriz Costa (3º Ano A)"
-                  className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-xs font-medium text-slate-900 focus:border-teal-600 focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-700">
-                  Professor(a) Orientador(a)
-                </label>
-                <input
-                  type="text"
-                  value={advisor}
-                  onChange={(e) => setAdvisor(e.target.value)}
-                  placeholder="Ex: Profa. Dra. Mariana Fernandes"
-                  className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-xs font-medium text-slate-900 focus:border-teal-600 focus:outline-none"
                 />
               </div>
 

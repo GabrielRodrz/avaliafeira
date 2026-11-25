@@ -339,25 +339,6 @@ export default function ProjectEvaluationPage() {
           <h1 className="mt-3 text-lg sm:text-xl font-black text-slate-900 leading-snug">
             {project.title}
           </h1>
-
-          <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs sm:text-sm text-slate-600">
-            <div className="flex items-start gap-2">
-              <Users className="h-4 w-4 text-slate-400 shrink-0 mt-0.5" />
-              <div>
-                <span className="font-semibold text-slate-700">Integrantes: </span>
-                <span>{project.members}</span>
-              </div>
-            </div>
-            {project.advisor && (
-              <div className="flex items-start gap-2">
-                <GraduationCap className="h-4 w-4 text-slate-400 shrink-0 mt-0.5" />
-                <div>
-                  <span className="font-semibold text-slate-700">Orientador(a): </span>
-                  <span>{project.advisor}</span>
-                </div>
-              </div>
-            )}
-          </div>
         </section>
 
         {/* Instrução da Escala Oficial */}

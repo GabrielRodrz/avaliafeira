@@ -113,8 +113,8 @@ export default function DistributionModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 p-4 backdrop-blur-xs overflow-y-auto">
-      <div className="w-full max-w-3xl rounded-3xl bg-white p-6 sm:p-8 shadow-2xl transition-all my-8">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 p-3 sm:p-4 backdrop-blur-xs overflow-y-auto">
+      <div className="w-full max-w-3xl rounded-3xl bg-white p-4 sm:p-8 shadow-2xl transition-all my-auto max-h-[95vh] overflow-y-auto">
         {/* Cabeçalho */}
         <div className="flex items-center justify-between border-b border-slate-100 pb-4">
           <div className="flex items-center gap-3.5">
@@ -396,12 +396,12 @@ export default function DistributionModal({
           )}
         </div>
 
-        {/* Rodapé com Botões de Ação */}
-        <div className="mt-6 flex items-center justify-end gap-3 border-t border-slate-100 pt-4">
+        {/* Rodapé com Botões de Ação Responsivos */}
+        <div className="mt-6 flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2.5 sm:gap-3 border-t border-slate-100 pt-4">
           <button
             type="button"
             onClick={onClose}
-            className="rounded-xl px-4 py-2.5 text-xs font-semibold text-slate-600 hover:bg-slate-100 transition"
+            className="w-full sm:w-auto text-center rounded-xl px-4 py-2.5 text-xs font-semibold text-slate-600 hover:bg-slate-100 transition"
           >
             Cancelar
           </button>
@@ -410,7 +410,7 @@ export default function DistributionModal({
             type="button"
             disabled={evaluators.length === 0 || projects.length === 0 || isApplying}
             onClick={handleApply}
-            className="inline-flex items-center gap-2 rounded-2xl bg-teal-600 px-7 py-3 text-sm font-black text-white shadow-lg shadow-teal-600/25 hover:bg-teal-700 active:scale-98 transition disabled:opacity-50 cursor-pointer"
+            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-2xl bg-teal-600 px-7 py-3 text-sm font-black text-white shadow-lg shadow-teal-600/25 hover:bg-teal-700 active:scale-98 transition disabled:opacity-50 cursor-pointer"
           >
             {isApplying ? (
               <>

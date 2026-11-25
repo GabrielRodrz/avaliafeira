@@ -170,11 +170,8 @@ export default function RankingsTable({
                       <h4 className="font-bold text-slate-900 text-xs leading-snug line-clamp-2">
                         {item.project.title}
                       </h4>
-                      <p className="mt-0.5 text-[11px] text-teal-700 font-medium">
+                      <p className="mt-0.5 text-[11px] text-teal-700 font-semibold">
                         {item.project.category}
-                      </p>
-                      <p className="mt-0.5 text-[10px] text-slate-400 line-clamp-1">
-                        {item.project.members}
                       </p>
                     </td>
 

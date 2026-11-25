@@ -131,7 +131,7 @@ export default function SettingsAndSharing({
         `"${r.project.code}"`,
         `"${r.project.title.replace(/"/g, '""')}"`,
         `"${r.project.category.replace(/"/g, '""')}"`,
-        `"${r.project.members.replace(/"/g, '""')}"`,
+        `"${(r.project.members || "").replace(/"/g, '""')}"`,
         `"${(r.project.advisor || "").replace(/"/g, '""')}"`,
         `"${r.project.stand || ""}"`,
         r.evaluationsCount,

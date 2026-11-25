@@ -39,20 +39,21 @@ interface EvaluatorsManagementProps {
     allocations: { projectId: string; evaluatorCodes: string[] }[]
   ) => Promise<void>;
   onSeed40Projects?: () => Promise<void>;
+  onClearAllData?: () => Promise<void>;
 }
 
-// Gerador de matrícula numérica aleatória única (4 dígitos: 1000 a 9999)
+// Gerador de matrícula numérica aleatória única com 6 DÍGITOS (100000 a 999999)
 function generateRandomNumericMatricula(existingCodes: string[] = []): string {
   const existingSet = new Set(existingCodes.map((c) => c.trim().replace(/\D/g, "")));
   let attempts = 0;
-  while (attempts < 10000) {
-    const num = Math.floor(1000 + Math.random() * 9000).toString();
+  while (attempts < 100000) {
+    const num = Math.floor(100000 + Math.random() * 900000).toString();
     if (!existingSet.has(num)) {
       return num;
     }
     attempts++;
   }
-  return Math.floor(10000 + Math.random() * 90000).toString();
+  return Math.floor(100000 + Math.random() * 900000).toString();
 }
 
 interface ParsedEvaluatorRow {
@@ -71,6 +72,7 @@ export default function EvaluatorsManagement({
   onDeleteEvaluator,
   onApplyDistribution,
   onSeed40Projects,
+  onClearAllData,
 }: EvaluatorsManagementProps) {
   const [search, setSearch] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -135,8 +137,8 @@ export default function EvaluatorsManagement({
     setError("");
 
     const cleanCode = code.trim().replace(/\D/g, "");
-    if (!cleanCode) {
-      setError("A matrícula é obrigatória e deve conter apenas números.");
+    if (!cleanCode || cleanCode.length !== 6) {
+      setError("A matrícula deve conter exatamente 6 dígitos numéricos (ex: 849201).");
       return;
     }
 
@@ -355,7 +357,7 @@ export default function EvaluatorsManagement({
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Buscar por matrícula (ex: 101) ou nome do jurado..."
+            placeholder="Buscar por matrícula de 6 dígitos (ex: 849201) ou nome do jurado..."
             className="w-full rounded-2xl border border-slate-300 bg-white py-2.5 pl-10 pr-4 text-xs sm:text-sm text-slate-900 placeholder:text-slate-400 focus:border-teal-600 focus:outline-none"
           />
         </div>
@@ -406,6 +408,19 @@ export default function EvaluatorsManagement({
             <Plus className="h-4 w-4" />
             <span>Novo Avaliador</span>
           </button>
+
+          {/* Botão Limpar Avaliadores */}
+          {onClearAllData && evaluators.length > 0 && (
+            <button
+              type="button"
+              onClick={onClearAllData}
+              title="Limpar avaliadores e notas de teste"
+              className="inline-flex items-center gap-1.5 rounded-2xl border border-rose-200 bg-rose-50 hover:bg-rose-100 px-3.5 py-2.5 text-xs font-bold text-rose-700 transition active:scale-95 cursor-pointer shadow-2xs"
+            >
+              <Trash2 className="h-4 w-4 text-rose-500" />
+              <span>Limpar Avaliadores</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -812,12 +827,13 @@ export default function EvaluatorsManagement({
                     inputMode="numeric"
                     pattern="[0-9]*"
                     required
+                    maxLength={6}
                     value={code}
                     onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
-                    placeholder="Ex: 101"
-                    className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm font-bold font-mono text-slate-900 focus:border-teal-600 focus:outline-none"
+                    placeholder="Ex: 849201"
+                    className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm font-bold font-mono text-slate-900 focus:border-teal-600 focus:outline-none tracking-wider"
                   />
-                  <span className="text-[10px] text-slate-400">Somente números (ex: 101, 4821).</span>
+                  <span className="text-[10px] text-slate-400">Somente números (exatamente 6 dígitos, ex: 849201).</span>
                 </div>
 
                 {/* Nome do Jurado */}
