@@ -1,0 +1,78 @@
+"use client";
+
+import Link from "next/link";
+import { User, RefreshCw, Shield, Award } from "lucide-react";
+
+interface EvaluatorHeaderProps {
+  evaluatorName: string;
+  onOpenNameModal: () => void;
+  fairName?: string;
+  edition?: string;
+}
+
+export default function EvaluatorHeader({
+  evaluatorName,
+  onOpenNameModal,
+  fairName = "AvaliaFeira",
+  edition = "2026",
+}: EvaluatorHeaderProps) {
+  return (
+    <header className="sticky top-0 z-30 border-b border-slate-200/80 bg-white/95 backdrop-blur-md">
+      <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3 sm:px-6">
+        <div className="flex items-center gap-3">
+          <Link href="/avaliar" className="flex items-center gap-2.5 group">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-teal-600 text-white shadow-md shadow-teal-600/25 group-hover:bg-teal-700 transition">
+              <Award className="h-5 w-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-1.5">
+                <span className="font-extrabold tracking-tight text-slate-900 text-lg">
+                  AvaliaFeira
+                </span>
+                <span className="rounded-md bg-teal-100 px-1.5 py-0.5 text-[10px] font-bold text-teal-800">
+                  {edition}
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 font-medium hidden sm:block">
+                {fairName}
+              </p>
+            </div>
+          </Link>
+        </div>
+
+        <div className="flex items-center gap-2 sm:gap-3">
+          {evaluatorName ? (
+            <button
+              onClick={onOpenNameModal}
+              title="Clique para alterar seu nome de avaliador"
+              className="flex items-center gap-2 rounded-xl bg-slate-100 hover:bg-slate-200/80 border border-slate-200 px-3 py-1.5 text-xs sm:text-sm font-semibold text-slate-800 transition active:scale-95"
+            >
+              <User className="h-4 w-4 text-teal-600" />
+              <span className="max-w-[120px] sm:max-w-[180px] truncate">
+                {evaluatorName}
+              </span>
+              <RefreshCw className="h-3 w-3 text-slate-400" />
+            </button>
+          ) : (
+            <button
+              onClick={onOpenNameModal}
+              className="flex items-center gap-1.5 rounded-xl bg-teal-600 px-3 py-1.5 text-xs sm:text-sm font-bold text-white shadow-sm hover:bg-teal-700 transition"
+            >
+              <User className="h-4 w-4" />
+              <span>Identificar-se</span>
+            </button>
+          )}
+
+          <Link
+            href="/admin"
+            className="flex items-center gap-1.5 rounded-xl border border-slate-200 px-2.5 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition"
+            title="Acesso Administrativo"
+          >
+            <Shield className="h-3.5 w-3.5 text-slate-500" />
+            <span className="hidden md:inline">Painel Admin</span>
+          </Link>
+        </div>
+      </div>
+    </header>
+  );
+}
