@@ -14,6 +14,8 @@ import {
   AlertTriangle,
   Hash,
   BookmarkCheck,
+  RefreshCw,
+  UserCheck,
 } from "lucide-react";
 import EvaluatorHeader from "@/components/evaluator/EvaluatorHeader";
 import EvaluatorNameModal from "@/components/evaluator/EvaluatorNameModal";
@@ -26,8 +28,9 @@ import {
   submitEvaluation,
   getFairSettings,
   createOrUpdateEvaluator,
+  getEvaluators,
 } from "@/lib/data-service";
-import { Project, Criterion, Evaluation, FairSettings, OFFICIAL_CRITERIA } from "@/types";
+import { Project, Criterion, Evaluation, FairSettings, Evaluator, OFFICIAL_CRITERIA } from "@/types";
 
 export default function ProjectEvaluationPage() {
   const params = useParams();
@@ -37,6 +40,7 @@ export default function ProjectEvaluationPage() {
   const [evaluatorCode, setEvaluatorCode] = useState<string>("");
   const [evaluatorName, setEvaluatorName] = useState<string>("");
   const [isNameModalOpen, setIsNameModalOpen] = useState(false);
+  const [evaluators, setEvaluators] = useState<Evaluator[]>([]);
   const [project, setProject] = useState<Project | null>(null);
   const [criteria, setCriteria] = useState<Criterion[]>(OFFICIAL_CRITERIA);
   const [settings, setSettings] = useState<FairSettings | null>(null);
@@ -62,12 +66,15 @@ export default function ProjectEvaluationPage() {
   useEffect(() => {
     async function load() {
       try {
-        const [projectsData, criteriaData, evalsData, settingsData] = await Promise.all([
+        const [projectsData, criteriaData, evalsData, settingsData, evaluatorsData] = await Promise.all([
           getProjects(),
           getCriteria(),
           getEvaluations(),
           getFairSettings(),
+          getEvaluators(),
         ]);
+
+        setEvaluators(evaluatorsData);
 
         const currentProj = projectsData.find((p) => p.id === projectId);
         if (currentProj) {
@@ -222,9 +229,35 @@ export default function ProjectEvaluationPage() {
         onSave={handleSaveIdentification}
         onCancel={() => setIsNameModalOpen(false)}
         canCancel={Boolean(evaluatorCode && evaluatorName)}
+        availableEvaluators={evaluators}
       />
 
       <main className="mx-auto max-w-4xl px-4 pt-5 sm:px-6">
+        {/* Banner do Avaliador Atual */}
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border-2 border-teal-500/40 bg-teal-50/90 p-3.5 shadow-xs">
+          <div className="flex items-center gap-3">
+            <span className="rounded-xl bg-teal-800 text-white px-3 py-1.5 text-xs sm:text-sm font-black font-mono tracking-wider shadow-xs">
+              MATRÍCULA: {evaluatorCode || "NÃO DEFINIDA"}
+            </span>
+            <div>
+              <span className="text-[10px] font-black uppercase tracking-wider text-teal-800 block">
+                Jurado(a) Ativo(a)
+              </span>
+              <span className="text-xs sm:text-sm font-bold text-slate-900">
+                {evaluatorName || "Nome não informado"}
+              </span>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setIsNameModalOpen(true)}
+            className="inline-flex items-center gap-1.5 rounded-xl bg-white hover:bg-slate-100 border border-teal-300 px-3 py-1.5 text-xs font-bold text-teal-900 transition shadow-2xs cursor-pointer active:scale-95"
+          >
+            <RefreshCw className="h-3.5 w-3.5 text-teal-700" />
+            <span>Não é você? Trocar</span>
+          </button>
+        </div>
+
         {/* Link de Retorno */}
         <div className="mb-4">
           <Link

@@ -47,18 +47,20 @@ export default function EvaluatorHeader({
             <button
               onClick={onOpenNameModal}
               title="Clique para alterar sua matrícula ou nome"
-              className="flex items-center gap-2 rounded-xl bg-slate-100 hover:bg-slate-200/80 border border-slate-200 px-3 py-1.5 text-xs sm:text-sm font-semibold text-slate-800 transition active:scale-95"
+              className="flex items-center gap-2 rounded-2xl bg-teal-50 hover:bg-teal-100/80 border-2 border-teal-400/80 px-3 py-1.5 text-xs sm:text-sm font-bold text-slate-800 transition active:scale-95 shadow-xs cursor-pointer"
             >
               {evaluatorCode && (
-                <span className="rounded-md bg-teal-600 px-1.5 py-0.5 text-[10px] font-extrabold text-white">
+                <span className="rounded-xl bg-teal-800 px-2.5 py-1 text-xs sm:text-sm font-black text-white font-mono tracking-wider shadow-xs">
                   {evaluatorCode}
                 </span>
               )}
-              <User className="h-4 w-4 text-teal-600" />
-              <span className="max-w-[110px] sm:max-w-[170px] truncate">
+              <span className="max-w-[110px] sm:max-w-[170px] truncate text-slate-900 font-extrabold">
                 {evaluatorName || "Identificado"}
               </span>
-              <RefreshCw className="h-3 w-3 text-slate-400" />
+              <span className="inline-flex items-center gap-1 text-[11px] font-bold text-teal-800 bg-teal-200/60 rounded-lg px-2 py-0.5">
+                <RefreshCw className="h-3 w-3" />
+                <span className="hidden sm:inline">Trocar</span>
+              </span>
             </button>
           ) : (
             <button

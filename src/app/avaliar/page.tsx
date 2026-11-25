@@ -17,6 +17,7 @@ import {
   Hash,
   BookmarkCheck,
   AlertCircle,
+  RefreshCw,
 } from "lucide-react";
 import EvaluatorHeader from "@/components/evaluator/EvaluatorHeader";
 import EvaluatorNameModal from "@/components/evaluator/EvaluatorNameModal";
@@ -200,12 +201,23 @@ export default function EvaluatorProjectsPage() {
         <section className="mb-6 rounded-3xl bg-linear-to-r from-teal-800 via-teal-900 to-slate-900 p-6 text-white shadow-xl">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <div className="inline-flex items-center gap-2 rounded-full bg-teal-500/20 px-3 py-1 text-xs font-semibold text-teal-200 backdrop-blur-xs border border-teal-400/20">
-                <Hash className="h-3.5 w-3.5 text-teal-300" />
-                <span>Matrícula: <strong>{evaluatorCode || "Não informada"}</strong></span>
+              <div className="flex flex-wrap items-center gap-2.5">
+                <div className="inline-flex items-center gap-2 rounded-2xl bg-teal-400 text-teal-950 px-3.5 py-1.5 text-xs sm:text-sm font-black shadow-md">
+                  <Hash className="h-4 w-4" />
+                  <span>MATRÍCULA: <strong>{evaluatorCode || "NÃO INFORMADA"}</strong></span>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setIsNameModalOpen(true)}
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-white/15 hover:bg-white/25 px-3 py-1.5 text-xs font-bold text-white transition border border-white/20 active:scale-95 cursor-pointer"
+                >
+                  <RefreshCw className="h-3.5 w-3.5" />
+                  <span>Não é você? Trocar de Matrícula</span>
+                </button>
               </div>
 
-              <h1 className="mt-2.5 text-xl sm:text-2xl font-black tracking-tight text-white">
+              <h1 className="mt-3 text-xl sm:text-2xl font-black tracking-tight text-white">
                 Olá, {evaluatorName || "Avaliador(a)"}!
               </h1>
               <p className="mt-1 text-xs sm:text-sm text-teal-100/90 leading-relaxed max-w-xl">
@@ -412,9 +424,9 @@ export default function EvaluatorProjectsPage() {
 
                       {/* Selo: Designado para Você */}
                       {isAssigned && (
-                        <span className="flex items-center gap-1 rounded-full bg-teal-100 border border-teal-300 px-2.5 py-0.5 text-[11px] font-black text-teal-900">
+                        <span className="flex items-center gap-1 rounded-full bg-teal-100 border border-teal-300 px-3 py-1 text-xs font-black text-teal-900 shadow-2xs">
                           <BookmarkCheck className="h-3.5 w-3.5 text-teal-700" />
-                          <span>Designado para Você</span>
+                          <span>Designado para sua Matrícula ({evaluatorCode})</span>
                         </span>
                       )}
                     </div>

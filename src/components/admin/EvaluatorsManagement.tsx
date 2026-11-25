@@ -185,7 +185,7 @@ export default function EvaluatorsManagement({
                     <tr key={ev.code} className="hover:bg-slate-50 transition">
                       {/* Matrícula */}
                       <td className="px-4 py-3 font-bold text-slate-900 whitespace-nowrap">
-                        <span className="rounded-md bg-teal-50 px-2.5 py-1 text-xs font-black text-teal-800 border border-teal-200">
+                        <span className="rounded-xl bg-teal-800 text-white px-3 py-1 text-sm font-black font-mono tracking-wider shadow-xs">
                           {ev.code}
                         </span>
                       </td>
