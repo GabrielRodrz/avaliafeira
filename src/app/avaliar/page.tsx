@@ -276,63 +276,70 @@ export default function EvaluatorProjectsPage() {
             />
           </div>
 
-          {/* Filtros: Abas de Escala */}
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="flex flex-wrap rounded-xl bg-slate-200/80 p-1 text-xs font-bold text-slate-700">
-              <button
-                onClick={() => setFilterMode("assigned")}
-                className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 transition ${
-                  filterMode === "assigned"
-                    ? "bg-teal-700 text-white shadow-xs"
-                    : "hover:text-slate-900"
-                }`}
-              >
-                <BookmarkCheck className="h-3.5 w-3.5" />
-                <span>Meus Designados ({totalAssigned})</span>
-              </button>
+          {/* Filtros: Abas de Escala (rolagem horizontal suave, sem quebrar em duas linhas) */}
+          <div className="space-y-2.5">
+            <div className="overflow-x-auto no-scrollbar -mx-4 px-4 sm:mx-0 sm:px-0">
+              <div className="inline-flex min-w-full sm:min-w-0 items-center gap-1 rounded-2xl bg-slate-200/80 p-1.5 text-xs font-bold text-slate-700">
+                <button
+                  type="button"
+                  onClick={() => setFilterMode("assigned")}
+                  className={`flex items-center justify-center gap-1.5 rounded-xl px-3.5 py-2 transition shrink-0 whitespace-nowrap cursor-pointer ${
+                    filterMode === "assigned"
+                      ? "bg-teal-700 text-white shadow-xs"
+                      : "hover:bg-slate-300/60 text-slate-700"
+                  }`}
+                >
+                  <BookmarkCheck className="h-3.5 w-3.5" />
+                  <span>Meus Designados ({totalAssigned})</span>
+                </button>
 
-              <button
-                onClick={() => setFilterMode("pending")}
-                className={`rounded-lg px-3 py-1.5 transition ${
-                  filterMode === "pending"
-                    ? "bg-amber-600 text-white shadow-xs"
-                    : "hover:text-slate-900"
-                }`}
-              >
-                Pendentes
-              </button>
+                <button
+                  type="button"
+                  onClick={() => setFilterMode("pending")}
+                  className={`flex items-center justify-center gap-1.5 rounded-xl px-3.5 py-2 transition shrink-0 whitespace-nowrap cursor-pointer ${
+                    filterMode === "pending"
+                      ? "bg-amber-600 text-white shadow-xs"
+                      : "hover:bg-slate-300/60 text-slate-700"
+                  }`}
+                >
+                  <span>Pendentes ({Math.max(0, totalAssigned - totalEvaluatedByMe)})</span>
+                </button>
 
-              <button
-                onClick={() => setFilterMode("evaluated")}
-                className={`rounded-lg px-3 py-1.5 transition ${
-                  filterMode === "evaluated"
-                    ? "bg-emerald-600 text-white shadow-xs"
-                    : "hover:text-slate-900"
-                }`}
-              >
-                Avaliados ({totalEvaluatedByMe})
-              </button>
+                <button
+                  type="button"
+                  onClick={() => setFilterMode("evaluated")}
+                  className={`flex items-center justify-center gap-1.5 rounded-xl px-3.5 py-2 transition shrink-0 whitespace-nowrap cursor-pointer ${
+                    filterMode === "evaluated"
+                      ? "bg-emerald-600 text-white shadow-xs"
+                      : "hover:bg-slate-300/60 text-slate-700"
+                  }`}
+                >
+                  <span>Avaliados ({totalEvaluatedByMe})</span>
+                </button>
 
-              <button
-                onClick={() => setFilterMode("all")}
-                className={`rounded-lg px-3 py-1.5 transition ${
-                  filterMode === "all"
-                    ? "bg-white text-slate-900 shadow-xs"
-                    : "hover:text-slate-900"
-                }`}
-              >
-                Todos da Feira ({totalProjects})
-              </button>
+                <button
+                  type="button"
+                  onClick={() => setFilterMode("all")}
+                  className={`flex items-center justify-center gap-1.5 rounded-xl px-3.5 py-2 transition shrink-0 whitespace-nowrap cursor-pointer ${
+                    filterMode === "all"
+                      ? "bg-slate-900 text-white shadow-xs"
+                      : "hover:bg-slate-300/60 text-slate-700"
+                  }`}
+                >
+                  <span>Todos da Feira ({totalProjects})</span>
+                </button>
+              </div>
             </div>
 
-            {/* Categorias */}
+            {/* Categorias em linha separada (rolagem horizontal suave) */}
             {categories.length > 0 && (
-              <div className="flex items-center gap-1.5 overflow-x-auto py-1 text-xs">
+              <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1 text-xs -mx-4 px-4 sm:mx-0 sm:px-0">
                 <button
+                  type="button"
                   onClick={() => setSelectedCategory("all")}
-                  className={`rounded-xl px-3 py-1.5 font-bold transition shrink-0 ${
+                  className={`rounded-xl px-3.5 py-1.5 font-bold transition shrink-0 whitespace-nowrap cursor-pointer ${
                     selectedCategory === "all"
-                      ? "bg-slate-900 text-white"
+                      ? "bg-slate-900 text-white shadow-xs"
                       : "bg-white border border-slate-200 text-slate-700 hover:bg-slate-100"
                   }`}
                 >
@@ -341,8 +348,9 @@ export default function EvaluatorProjectsPage() {
                 {categories.map((cat) => (
                   <button
                     key={cat}
+                    type="button"
                     onClick={() => setSelectedCategory(cat)}
-                    className={`rounded-xl px-3 py-1.5 font-semibold transition shrink-0 ${
+                    className={`rounded-xl px-3.5 py-1.5 font-bold transition shrink-0 whitespace-nowrap cursor-pointer ${
                       selectedCategory === cat
                         ? "bg-slate-900 text-white font-bold"
                         : "bg-white border border-slate-200 text-slate-700 hover:bg-slate-100"
