@@ -786,7 +786,7 @@ export async function submitEvaluation(
   const supabase = getSupabaseClient();
   if (supabase) {
     try {
-      const payload: any = {
+      const basePayload: any = {
         project_id: evaluation.project_id,
         evaluator_name: cleanName,
         scores: evaluation.scores,
@@ -794,22 +794,71 @@ export async function submitEvaluation(
         notes: evaluation.notes || "",
         updated_at: new Date().toISOString(),
       };
-      if (cleanCode) {
-        payload.evaluator_code = cleanCode;
-      }
 
-      // Tentar upsert
-      const { data, error } = await supabase
+      const payloadWithCode = cleanCode
+        ? { ...basePayload, evaluator_code: cleanCode }
+        : basePayload;
+
+      // 1. Tentar upsert com evaluator_code
+      let { data, error } = await supabase
         .from("evaluations")
-        .upsert(payload, { onConflict: "project_id,evaluator_name" })
+        .upsert(payloadWithCode, { onConflict: "project_id,evaluator_name" })
         .select()
         .single();
 
-      if (!error && data) {
-        return data as Evaluation;
+      // 2. Se a coluna evaluator_code não existir no banco (PGRST204), salvar sem ela
+      if (error && (error.message?.includes("evaluator_code") || error.code === "PGRST204")) {
+        console.warn("Coluna evaluator_code ausente na tabela evaluations do Supabase. Salvando com payload compatível.");
+        const retry = await supabase
+          .from("evaluations")
+          .upsert(basePayload, { onConflict: "project_id,evaluator_name" })
+          .select()
+          .single();
+        data = retry.data;
+        error = retry.error;
       }
+
+      // 3. Se onConflict falhar por ausência da constraint, tentar update seguido de insert
       if (error) {
-        console.warn("Aviso ao salvar no Supabase, tentando inserção simples:", error.message);
+        console.warn("Tentando update/insert alternativo no Supabase:", error.message);
+        const { data: updateData, error: updateError } = await supabase
+          .from("evaluations")
+          .update(basePayload)
+          .match({ project_id: evaluation.project_id, evaluator_name: cleanName })
+          .select()
+          .maybeSingle();
+
+        if (!updateError && updateData) {
+          data = updateData;
+          error = null;
+        } else {
+          const { data: insertData, error: insertError } = await supabase
+            .from("evaluations")
+            .insert(basePayload)
+            .select()
+            .single();
+          data = insertData;
+          error = insertError;
+        }
+      }
+
+      if (!error && data) {
+        const saved = {
+          ...data,
+          evaluator_code: cleanCode || (data as any).evaluator_code,
+        } as Evaluation;
+
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new CustomEvent("avaliafeira_eval_update", { detail: saved }));
+        }
+        return saved;
+      }
+
+      if (error) {
+        console.error("Falha ao gravar no Supabase:", error.message);
+        if (isSupabaseConfigured()) {
+          throw new Error(error.message);
+        }
       }
     } catch (e: any) {
       if (isSupabaseConfigured()) throw e;
