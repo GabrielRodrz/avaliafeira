@@ -43,6 +43,7 @@ export default function ProjectEvaluationPage() {
   const [evaluatorName, setEvaluatorName] = useState<string>("");
   const [isNameModalOpen, setIsNameModalOpen] = useState(false);
   const [evaluators, setEvaluators] = useState<Evaluator[]>([]);
+  const [allProjects, setAllProjects] = useState<Project[]>([]);
   const [project, setProject] = useState<Project | null>(null);
   const [criteria, setCriteria] = useState<Criterion[]>(OFFICIAL_CRITERIA);
   const [settings, setSettings] = useState<FairSettings | null>(null);
@@ -77,6 +78,30 @@ export default function ProjectEvaluationPage() {
         ]);
 
         setEvaluators(evaluatorsData);
+        setAllProjects(projectsData);
+
+        // Validação estrita de jurado cadastrado
+        const savedCode = localStorage.getItem("avaliafeira_evaluator_code") || "";
+        if (savedCode) {
+          const found = evaluatorsData.find(
+            (e) => e.code.replace(/\D/g, "") === savedCode.replace(/\D/g, "")
+          );
+          if (!found) {
+            localStorage.removeItem("avaliafeira_evaluator_code");
+            localStorage.removeItem("avaliafeira_evaluator_name");
+            setEvaluatorCode("");
+            setEvaluatorName("");
+            setIsNameModalOpen(true);
+          } else {
+            setEvaluatorCode(found.code);
+            if (found.name) {
+              setEvaluatorName(found.name);
+              localStorage.setItem("avaliafeira_evaluator_name", found.name);
+            }
+          }
+        } else {
+          setIsNameModalOpen(true);
+        }
 
         const currentProj = projectsData.find((p) => p.id === projectId);
         if (currentProj) {
@@ -89,15 +114,15 @@ export default function ProjectEvaluationPage() {
         setSettings(settingsData);
 
         // Se o avaliador já tiver avaliado este projeto, pré-preencher
-        const savedCode = localStorage.getItem("avaliafeira_evaluator_code") || "";
-        const savedName = localStorage.getItem("avaliafeira_evaluator_name") || "";
+        const activeCode = localStorage.getItem("avaliafeira_evaluator_code") || "";
+        const activeName = localStorage.getItem("avaliafeira_evaluator_name") || "";
 
-        if (currentProj && (savedCode || savedName)) {
+        if (currentProj && (activeCode || activeName)) {
           const existingEval = evalsData.find(
             (e) =>
               e.project_id === currentProj.id &&
-              ((savedCode && e.evaluator_code && e.evaluator_code.toUpperCase() === savedCode.toUpperCase()) ||
-                (savedName && e.evaluator_name.trim().toLowerCase() === savedName.trim().toLowerCase()))
+              ((activeCode && e.evaluator_code && e.evaluator_code.toUpperCase() === activeCode.toUpperCase()) ||
+                (activeName && e.evaluator_name.trim().toLowerCase() === activeName.trim().toLowerCase()))
           );
 
           if (existingEval) {
@@ -142,12 +167,6 @@ export default function ProjectEvaluationPage() {
     localStorage.setItem("avaliafeira_evaluator_code", newCode);
     localStorage.setItem("avaliafeira_evaluator_name", newName);
     setIsNameModalOpen(false);
-
-    try {
-      await createOrUpdateEvaluator(newCode, newName);
-    } catch (e) {
-      console.warn(e);
-    }
   };
 
   const handleSubmit = async () => {
@@ -239,6 +258,7 @@ export default function ProjectEvaluationPage() {
         onCancel={() => setIsNameModalOpen(false)}
         canCancel={Boolean(evaluatorCode && evaluatorName)}
         availableEvaluators={evaluators}
+        projects={allProjects}
       />
 
       <main className="mx-auto max-w-4xl px-4 pt-5 sm:px-6">

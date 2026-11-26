@@ -690,11 +690,6 @@ export async function submitEvaluation(
   const cleanCode = evaluation.evaluator_code ? evaluation.evaluator_code.trim().toUpperCase() : null;
   const cleanName = evaluation.evaluator_name.trim();
 
-  // Salvar/atualizar o nome do avaliador na tabela evaluators se houver matrícula
-  if (cleanCode) {
-    createOrUpdateEvaluator(cleanCode, cleanName).catch(() => {});
-  }
-
   const supabase = getSupabaseClient();
   if (supabase) {
     try {

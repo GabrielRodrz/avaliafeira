@@ -70,6 +70,30 @@ export default function EvaluatorProjectsPage() {
       setEvaluations(eData);
       setSettings(sData);
       setEvaluators(evList);
+
+      // Validação estrita de jurado cadastrado
+      const savedCode = localStorage.getItem("avaliafeira_evaluator_code") || "";
+      if (savedCode) {
+        const found = evList.find(
+          (e) => e.code.replace(/\D/g, "") === savedCode.replace(/\D/g, "")
+        );
+        if (!found) {
+          // A matrícula salva não existe na lista oficial: limpar e exigir identificação
+          localStorage.removeItem("avaliafeira_evaluator_code");
+          localStorage.removeItem("avaliafeira_evaluator_name");
+          setEvaluatorCode("");
+          setEvaluatorName("");
+          setIsNameModalOpen(true);
+        } else {
+          setEvaluatorCode(found.code);
+          if (found.name) {
+            setEvaluatorName(found.name);
+            localStorage.setItem("avaliafeira_evaluator_name", found.name);
+          }
+        }
+      } else {
+        setIsNameModalOpen(true);
+      }
     } catch (err) {
       console.error("Erro ao carregar dados dos projetos:", err);
     } finally {
@@ -91,14 +115,6 @@ export default function EvaluatorProjectsPage() {
     localStorage.setItem("avaliafeira_evaluator_code", newCode);
     localStorage.setItem("avaliafeira_evaluator_name", newName);
     setIsNameModalOpen(false);
-
-    // Salvar/atualizar no backend
-    try {
-      await createOrUpdateEvaluator(newCode, newName);
-      await loadData();
-    } catch (e) {
-      console.warn(e);
-    }
   };
 
   // Mapear avaliações deste avaliador (por matrícula ou por nome)
@@ -195,6 +211,7 @@ export default function EvaluatorProjectsPage() {
         onCancel={() => setIsNameModalOpen(false)}
         canCancel={Boolean(evaluatorCode && evaluatorName)}
         availableEvaluators={evaluators}
+        projects={projects}
       />
 
       <main className="w-full max-w-5xl mx-auto px-3.5 sm:px-6 pt-4 sm:pt-6">
