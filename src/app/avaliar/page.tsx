@@ -197,9 +197,9 @@ export default function EvaluatorProjectsPage() {
         availableEvaluators={evaluators}
       />
 
-      <main className="mx-auto max-w-5xl px-4 pt-6 sm:px-6">
+      <main className="w-full max-w-5xl mx-auto px-3.5 sm:px-6 pt-4 sm:pt-6">
         {/* Banner do Avaliador com Matrícula e Escala */}
-        <section className="mb-6 rounded-3xl bg-linear-to-r from-teal-800 via-teal-900 to-slate-900 p-6 text-white shadow-xl">
+        <section className="mb-5 rounded-2xl sm:rounded-3xl bg-linear-to-r from-teal-800 via-teal-900 to-slate-900 p-4 sm:p-6 text-white shadow-xl">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <div className="flex flex-wrap items-center gap-2.5">
@@ -276,14 +276,14 @@ export default function EvaluatorProjectsPage() {
             />
           </div>
 
-          {/* Filtros: Abas de Escala (rolagem horizontal suave, sem quebrar em duas linhas) */}
+          {/* Filtros: Abas de Escala (rolagem horizontal suave com flex-nowrap) */}
           <div className="space-y-2.5">
-            <div className="overflow-x-auto no-scrollbar -mx-4 px-4 sm:mx-0 sm:px-0">
-              <div className="inline-flex min-w-full sm:min-w-0 items-center gap-1 rounded-2xl bg-slate-200/80 p-1.5 text-xs font-bold text-slate-700">
+            <div className="w-full overflow-x-auto no-scrollbar pb-1">
+              <div className="flex w-max items-center gap-1.5 rounded-2xl bg-slate-200/80 p-1.5 text-xs font-bold text-slate-700">
                 <button
                   type="button"
                   onClick={() => setFilterMode("assigned")}
-                  className={`flex items-center justify-center gap-1.5 rounded-xl px-3.5 py-2 transition shrink-0 whitespace-nowrap cursor-pointer ${
+                  className={`flex items-center justify-center gap-1.5 rounded-xl px-3 py-2 transition shrink-0 whitespace-nowrap cursor-pointer ${
                     filterMode === "assigned"
                       ? "bg-teal-700 text-white shadow-xs"
                       : "hover:bg-slate-300/60 text-slate-700"
@@ -296,7 +296,7 @@ export default function EvaluatorProjectsPage() {
                 <button
                   type="button"
                   onClick={() => setFilterMode("pending")}
-                  className={`flex items-center justify-center gap-1.5 rounded-xl px-3.5 py-2 transition shrink-0 whitespace-nowrap cursor-pointer ${
+                  className={`flex items-center justify-center gap-1.5 rounded-xl px-3 py-2 transition shrink-0 whitespace-nowrap cursor-pointer ${
                     filterMode === "pending"
                       ? "bg-amber-600 text-white shadow-xs"
                       : "hover:bg-slate-300/60 text-slate-700"
@@ -308,7 +308,7 @@ export default function EvaluatorProjectsPage() {
                 <button
                   type="button"
                   onClick={() => setFilterMode("evaluated")}
-                  className={`flex items-center justify-center gap-1.5 rounded-xl px-3.5 py-2 transition shrink-0 whitespace-nowrap cursor-pointer ${
+                  className={`flex items-center justify-center gap-1.5 rounded-xl px-3 py-2 transition shrink-0 whitespace-nowrap cursor-pointer ${
                     filterMode === "evaluated"
                       ? "bg-emerald-600 text-white shadow-xs"
                       : "hover:bg-slate-300/60 text-slate-700"
@@ -320,7 +320,7 @@ export default function EvaluatorProjectsPage() {
                 <button
                   type="button"
                   onClick={() => setFilterMode("all")}
-                  className={`flex items-center justify-center gap-1.5 rounded-xl px-3.5 py-2 transition shrink-0 whitespace-nowrap cursor-pointer ${
+                  className={`flex items-center justify-center gap-1.5 rounded-xl px-3 py-2 transition shrink-0 whitespace-nowrap cursor-pointer ${
                     filterMode === "all"
                       ? "bg-slate-900 text-white shadow-xs"
                       : "hover:bg-slate-300/60 text-slate-700"
@@ -333,7 +333,7 @@ export default function EvaluatorProjectsPage() {
 
             {/* Categorias em linha separada (rolagem horizontal suave) */}
             {categories.length > 0 && (
-              <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1 text-xs -mx-4 px-4 sm:mx-0 sm:px-0">
+              <div className="w-full flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1 text-xs">
                 <button
                   type="button"
                   onClick={() => setSelectedCategory("all")}
@@ -371,7 +371,7 @@ export default function EvaluatorProjectsPage() {
             <p className="text-sm font-semibold">Carregando projetos da feira...</p>
           </div>
         ) : filteredProjects.length === 0 ? (
-          <div className="rounded-3xl border border-dashed border-slate-300 bg-white p-12 text-center">
+          <div className="rounded-2xl sm:rounded-3xl border border-dashed border-slate-300 bg-white p-6 sm:p-12 text-center">
             <BookOpen className="mx-auto h-10 w-10 text-slate-300" />
             <h3 className="mt-3 text-base font-bold text-slate-800">
               {filterMode === "assigned" && totalAssigned === 0
@@ -407,7 +407,7 @@ export default function EvaluatorProjectsPage() {
               return (
                 <div
                   key={project.id}
-                  className={`group relative rounded-3xl border bg-white p-5 sm:p-6 transition-all shadow-xs hover:shadow-md ${
+                  className={`group relative rounded-2xl sm:rounded-3xl border bg-white p-4 sm:p-6 transition-all shadow-xs hover:shadow-md ${
                     isEvaluated
                       ? "border-emerald-300/80 bg-emerald-50/20"
                       : isAssigned
