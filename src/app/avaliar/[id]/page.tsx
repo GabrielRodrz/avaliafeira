@@ -82,9 +82,9 @@ export default function ProjectEvaluationPage() {
 
         // Validação estrita de jurado cadastrado
         const savedCode = localStorage.getItem("avaliafeira_evaluator_code") || "";
-        if (savedCode) {
+        if (savedCode && Array.isArray(evaluatorsData)) {
           const found = evaluatorsData.find(
-            (e) => e.code.replace(/\D/g, "") === savedCode.replace(/\D/g, "")
+            (e) => e && e.code && String(e.code).replace(/\D/g, "") === String(savedCode).replace(/\D/g, "")
           );
           if (!found) {
             localStorage.removeItem("avaliafeira_evaluator_code");
@@ -231,12 +231,13 @@ export default function ProjectEvaluationPage() {
     );
   }
 
-  const isAssigned =
+  const isAssigned = Boolean(
     evaluatorCode &&
-    project.assigned_evaluators &&
+    Array.isArray(project.assigned_evaluators) &&
     project.assigned_evaluators.some(
-      (c) => c.replace(/\D/g, "") === evaluatorCode.replace(/\D/g, "")
-    );
+      (c) => c && String(c).replace(/\D/g, "") === String(evaluatorCode).replace(/\D/g, "")
+    )
+  );
 
   return (
     <div className="min-h-screen bg-slate-50 pb-32">

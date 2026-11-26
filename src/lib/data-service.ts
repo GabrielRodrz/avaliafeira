@@ -122,7 +122,7 @@ export async function getEvaluators(): Promise<Evaluator[]> {
         return data.map((ev: any) => ({
           ...ev,
           assigned_projects: allocations
-            .filter((a) => a.evaluator_code.toUpperCase() === ev.code.toUpperCase())
+            .filter((a) => a?.evaluator_code && ev?.code && String(a.evaluator_code).toUpperCase() === String(ev.code).toUpperCase())
             .map((a) => a.project_id),
         }));
       }

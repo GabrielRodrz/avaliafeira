@@ -36,13 +36,36 @@ export default function EvaluatorNameModal({
   availableEvaluators = [],
   projects = [],
 }: EvaluatorNameModalProps) {
-  const [code, setCode] = useState(currentCode ? currentCode.replace(/\D/g, "") : "");
+  const [code, setCode] = useState(currentCode ? String(currentCode).replace(/\D/g, "") : "");
   const [name, setName] = useState(currentName || "");
   const [error, setError] = useState("");
 
+  const cleanCode = String(code || "").replace(/\D/g, "").slice(0, 6);
+
+  // Busca se o código digitado existe na lista oficial de jurados (sempre no topo dos hooks)
+  const matchedEvaluator = useMemo(() => {
+    if (cleanCode.length !== 6 || !Array.isArray(availableEvaluators)) return null;
+    return (
+      availableEvaluators.find(
+        (e) => e && e.code && String(e.code).replace(/\D/g, "") === cleanCode
+      ) || null
+    );
+  }, [cleanCode, availableEvaluators]);
+
+  // Contagem de projetos designados para essa matrícula (sempre no topo dos hooks)
+  const assignedProjectsCount = useMemo(() => {
+    if (!cleanCode || cleanCode.length !== 6 || !Array.isArray(projects)) return 0;
+    return projects.filter((p) =>
+      Array.isArray(p?.assigned_evaluators) &&
+      p.assigned_evaluators.some(
+        (c) => c && String(c).replace(/\D/g, "") === cleanCode
+      )
+    ).length;
+  }, [cleanCode, projects]);
+
   useEffect(() => {
     if (currentCode) {
-      setCode(currentCode.replace(/\D/g, ""));
+      setCode(String(currentCode).replace(/\D/g, ""));
     }
     if (currentName) {
       setName(currentName);
@@ -51,33 +74,15 @@ export default function EvaluatorNameModal({
 
   if (!isOpen) return null;
 
-  const cleanCode = code.replace(/\D/g, "").slice(0, 6);
-
-  // Busca se o código digitado existe na lista oficial de jurados
-  const matchedEvaluator = useMemo(() => {
-    if (cleanCode.length !== 6) return null;
-    return availableEvaluators.find(
-      (e) => e.code.replace(/\D/g, "") === cleanCode
-    ) || null;
-  }, [cleanCode, availableEvaluators]);
-
-  // Contagem de projetos designados para essa matrícula
-  const assignedProjectsCount = useMemo(() => {
-    if (!cleanCode || cleanCode.length !== 6) return 0;
-    return projects.filter((p) =>
-      p.assigned_evaluators?.some((c) => c.replace(/\D/g, "") === cleanCode)
-    ).length;
-  }, [cleanCode, projects]);
-
   const handleCodeChange = (raw: string) => {
     const numericOnly = raw.replace(/\D/g, "").slice(0, 6);
     setCode(numericOnly);
     setError("");
 
     // Se já tiver 6 dígitos e encontrar o jurado, pré-preenche o nome cadastrado
-    if (numericOnly.length === 6) {
+    if (numericOnly.length === 6 && Array.isArray(availableEvaluators)) {
       const found = availableEvaluators.find(
-        (e) => e.code.replace(/\D/g, "") === numericOnly
+        (e) => e && e.code && String(e.code).replace(/\D/g, "") === numericOnly
       );
       if (found?.name) {
         setName(found.name);

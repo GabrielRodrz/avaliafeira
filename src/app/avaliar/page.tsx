@@ -73,9 +73,9 @@ export default function EvaluatorProjectsPage() {
 
       // Validação estrita de jurado cadastrado
       const savedCode = localStorage.getItem("avaliafeira_evaluator_code") || "";
-      if (savedCode) {
+      if (savedCode && Array.isArray(evList)) {
         const found = evList.find(
-          (e) => e.code.replace(/\D/g, "") === savedCode.replace(/\D/g, "")
+          (e) => e && e.code && String(e.code).replace(/\D/g, "") === String(savedCode).replace(/\D/g, "")
         );
         if (!found) {
           // A matrícula salva não existe na lista oficial: limpar e exigir identificação
@@ -124,9 +124,9 @@ export default function EvaluatorProjectsPage() {
 
     evaluations.forEach((e) => {
       const matchCode =
-        evaluatorCode && e.evaluator_code && e.evaluator_code.toUpperCase() === evaluatorCode.toUpperCase();
+        evaluatorCode && e.evaluator_code && String(e.evaluator_code).toUpperCase() === String(evaluatorCode).toUpperCase();
       const matchName =
-        evaluatorName && e.evaluator_name && e.evaluator_name.trim().toLowerCase() === evaluatorName.trim().toLowerCase();
+        evaluatorName && e.evaluator_name && String(e.evaluator_name).trim().toLowerCase() === String(evaluatorName).trim().toLowerCase();
 
       if (matchCode || matchName) {
         map.set(e.project_id, e);
@@ -139,7 +139,7 @@ export default function EvaluatorProjectsPage() {
   const isProjectAssignedToMe = (p: Project): boolean => {
     if (!evaluatorCode) return false;
     const assigned = p.assigned_evaluators || [];
-    return assigned.some((code) => code.toUpperCase() === evaluatorCode.toUpperCase());
+    return assigned.some((code) => code && String(code).toUpperCase() === String(evaluatorCode).toUpperCase());
   };
 
   // Contadores
