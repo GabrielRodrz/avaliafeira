@@ -81,6 +81,7 @@ export default function ProjectsCrud({
             code: codeVal,
             title: titleVal,
             category: categoryVal,
+            members: "",
             stand: standVal || null,
             assigned_evaluators: [],
           });
@@ -194,6 +195,7 @@ export default function ProjectsCrud({
           code: code.trim(),
           title: title.trim(),
           category: category.trim(),
+          members: "",
           stand: stand.trim() || null,
           assigned_evaluators: assignedEvaluators,
         });
@@ -202,6 +204,7 @@ export default function ProjectsCrud({
           code: code.trim(),
           title: title.trim(),
           category: category.trim(),
+          members: "",
           stand: stand.trim() || null,
           assigned_evaluators: assignedEvaluators,
         });

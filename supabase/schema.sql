@@ -47,12 +47,16 @@ create table if not exists public.projects (
   code text unique not null,
   title text not null,
   category text not null,
-  members text not null,
+  members text default '',
   advisor text,
   stand text,
   created_at timestamptz default now(),
   updated_at timestamptz default now()
 );
+
+-- Garantir que a coluna members é opcional caso a tabela já exista
+alter table if exists public.projects alter column members drop not null;
+alter table if exists public.projects alter column members set default '';
 
 -- 6. Tabela de Avaliadores / Matrículas Cadastradas
 create table if not exists public.evaluators (

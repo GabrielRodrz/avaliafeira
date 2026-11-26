@@ -529,12 +529,20 @@ export async function createProject(
 ): Promise<Project> {
   const { assigned_evaluators, ...projectData } = project;
 
+  // Garante que members nunca seja nulo no banco, mesmo se omitido na UI
+  const insertPayload = {
+    ...projectData,
+    members: projectData.members ?? "",
+    advisor: projectData.advisor ?? null,
+    stand: projectData.stand ?? null,
+  };
+
   const supabase = getSupabaseClient();
   if (supabase) {
     try {
       const { data, error } = await supabase
         .from("projects")
-        .insert(projectData)
+        .insert(insertPayload)
         .select()
         .single();
 
@@ -580,12 +588,20 @@ export async function createProjectsBatch(
 export async function updateProject(id: string, updates: Partial<Project>): Promise<Project> {
   const { assigned_evaluators, ...projectData } = updates;
 
+  const updatePayload: any = {
+    ...projectData,
+    updated_at: new Date().toISOString(),
+  };
+  if (projectData.members !== undefined) {
+    updatePayload.members = projectData.members ?? "";
+  }
+
   const supabase = getSupabaseClient();
   if (supabase) {
     try {
       const { data, error } = await supabase
         .from("projects")
-        .update({ ...projectData, updated_at: new Date().toISOString() })
+        .update(updatePayload)
         .eq("id", id)
         .select()
         .single();
