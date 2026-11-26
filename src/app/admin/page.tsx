@@ -31,6 +31,7 @@ import {
   saveAllProjectAllocations,
   seedOfficial40Projects,
   clearAllData,
+  syncLocalEvaluatorsToSupabase,
 } from "@/lib/data-service";
 import { computeOfficialRanking } from "@/lib/ranking";
 import { getSupabaseClient, isSupabaseConfigured } from "@/lib/supabase/client";
@@ -111,6 +112,13 @@ export default function AdminPage() {
   const loadAllData = useCallback(async () => {
     setIsLoadingData(true);
     try {
+      // Auto-sincronizar jurados e alocações locais com o Supabase quando disponível
+      try {
+        await syncLocalEvaluatorsToSupabase();
+      } catch {
+        // ignore
+      }
+
       const [pData, eData, cData, sData, evList] = await Promise.all([
         getProjects(),
         getEvaluations(),
@@ -219,6 +227,11 @@ export default function AdminPage() {
     allocations: { projectId: string; evaluatorCodes: string[] }[]
   ) => {
     await saveAllProjectAllocations(allocations);
+    try {
+      await syncLocalEvaluatorsToSupabase();
+    } catch {
+      // ignore
+    }
     await loadAllData();
   };
 

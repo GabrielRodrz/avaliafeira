@@ -18,9 +18,11 @@ import {
   FileSpreadsheet,
   Shuffle,
   Sparkles,
+  RefreshCw,
 } from "lucide-react";
 import { Evaluator, Project, Evaluation } from "@/types";
 import DistributionModal from "./DistributionModal";
+import { syncLocalEvaluatorsToSupabase } from "@/lib/data-service";
 
 interface EvaluatorsManagementProps {
   evaluators: Evaluator[];
@@ -95,6 +97,36 @@ export default function EvaluatorsManagement({
   const [csvError, setCsvError] = useState("");
   const [isImporting, setIsImporting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Estados de sincronização com o Supabase
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncStatus, setSyncStatus] = useState<{ success: boolean; msg: string } | null>(null);
+
+  const handleSyncCloud = async () => {
+    setIsSyncing(true);
+    setSyncStatus(null);
+    try {
+      const res = await syncLocalEvaluatorsToSupabase();
+      if (res.success) {
+        setSyncStatus({
+          success: true,
+          msg: `✅ Sincronização concluída com sucesso! ${res.count} jurados e alocações estão salvos na nuvem (Supabase). Os celulares dos avaliadores já conseguem acessar!`,
+        });
+      } else {
+        setSyncStatus({
+          success: false,
+          msg: `⚠️ Não foi possível sincronizar com a nuvem: ${res.error}. Por favor, verifique se você executou o script SQL no painel do Supabase para criar as tabelas 'evaluators' e 'project_evaluators'.`,
+        });
+      }
+    } catch (e: any) {
+      setSyncStatus({
+        success: false,
+        msg: `Erro ao sincronizar: ${e?.message || e}`,
+      });
+    } finally {
+      setIsSyncing(false);
+    }
+  };
 
   const openCreateModal = () => {
     setEditingEvaluator(null);
@@ -400,6 +432,22 @@ export default function EvaluatorsManagement({
             <span>Subir CSV de Avaliadores</span>
           </button>
 
+          {/* Botão Sincronizar com Nuvem (Supabase) */}
+          <button
+            type="button"
+            onClick={handleSyncCloud}
+            disabled={isSyncing}
+            title="Garantir que todos os jurados e projetos distribuídos estão salvos na nuvem para os celulares dos jurados conseguirem acessar"
+            className="inline-flex items-center gap-1.5 rounded-2xl border border-sky-300 bg-sky-50 hover:bg-sky-100 px-4 py-2.5 text-xs font-black text-sky-950 transition active:scale-98 cursor-pointer shadow-2xs disabled:opacity-50"
+          >
+            {isSyncing ? (
+              <Loader2 className="h-4 w-4 animate-spin text-sky-600" />
+            ) : (
+              <RefreshCw className="h-4 w-4 text-sky-600" />
+            )}
+            <span>{isSyncing ? "Sincronizando..." : "Sincronizar com Nuvem"}</span>
+          </button>
+
           {/* Botão Novo Avaliador Individual */}
           <button
             onClick={openCreateModal}
@@ -423,6 +471,33 @@ export default function EvaluatorsManagement({
           )}
         </div>
       </div>
+
+      {/* Alerta de Sincronização com o Supabase */}
+      {syncStatus && (
+        <div
+          className={`mb-5 flex items-start gap-3 rounded-2xl p-4 text-xs font-bold leading-relaxed border ${
+            syncStatus.success
+              ? "bg-emerald-50 text-emerald-950 border-emerald-300 shadow-2xs"
+              : "bg-amber-50 text-amber-950 border-amber-300 shadow-xs"
+          }`}
+        >
+          {syncStatus.success ? (
+            <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0 mt-0.5" />
+          ) : (
+            <AlertCircle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+          )}
+          <div className="flex-1">
+            <span>{syncStatus.msg}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setSyncStatus(null)}
+            className="text-slate-400 hover:text-slate-600 text-sm font-bold"
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
       {/* Dica de Funcionamento */}
       <div className="mb-6 rounded-3xl bg-teal-50 border border-teal-200 p-5 text-xs text-teal-900 shadow-2xs">

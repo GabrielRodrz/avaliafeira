@@ -249,6 +249,83 @@ export async function createOrUpdateEvaluatorsBatch(
   }
 }
 
+/**
+ * Sincroniza todos os jurados e alocações locais para a tabela do Supabase
+ */
+export async function syncLocalEvaluatorsToSupabase(): Promise<{
+  success: boolean;
+  count: number;
+  error?: string;
+}> {
+  const supabase = getSupabaseClient();
+  if (!supabase) return { success: false, count: 0, error: "Supabase não configurado." };
+
+  if (typeof window === "undefined") return { success: false, count: 0 };
+
+  const cachedEvaluators = localStorage.getItem(LOCAL_STORAGE_KEYS.EVALUATORS);
+  const cachedAllocations = localStorage.getItem(LOCAL_STORAGE_KEYS.ALLOCATIONS);
+
+  if (!cachedEvaluators) return { success: true, count: 0 };
+
+  let evaluatorsList: Evaluator[] = [];
+  try {
+    evaluatorsList = JSON.parse(cachedEvaluators);
+  } catch {
+    evaluatorsList = [];
+  }
+
+  if (!Array.isArray(evaluatorsList) || evaluatorsList.length === 0) {
+    return { success: true, count: 0 };
+  }
+
+  try {
+    // 1. Inserir avaliadores no Supabase
+    const { error: evError } = await supabase.from("evaluators").upsert(
+      evaluatorsList.map((e) => ({
+        code: String(e.code).trim().toUpperCase(),
+        name: e.name ? String(e.name).trim() : null,
+      })),
+      { onConflict: "code" }
+    );
+
+    if (evError) {
+      return { success: false, count: 0, error: evError.message };
+    }
+
+    // 2. Se houver alocações, sincronizar project_evaluators
+    if (cachedAllocations) {
+      let allocsList: ProjectEvaluator[] = [];
+      try {
+        allocsList = JSON.parse(cachedAllocations);
+      } catch {
+        allocsList = [];
+      }
+
+      if (Array.isArray(allocsList) && allocsList.length > 0) {
+        await supabase
+          .from("project_evaluators")
+          .delete()
+          .neq("id", "00000000-0000-0000-0000-000000000000");
+
+        await supabase.from("project_evaluators").insert(
+          allocsList.map((a) => ({
+            project_id: a.project_id,
+            evaluator_code: String(a.evaluator_code).trim().toUpperCase(),
+          }))
+        );
+      }
+    }
+
+    return { success: true, count: evaluatorsList.length };
+  } catch (err: any) {
+    return {
+      success: false,
+      count: 0,
+      error: err?.message || "Erro desconhecido ao sincronizar com a nuvem.",
+    };
+  }
+}
+
 // ==============================================================================
 // ALOCAÇÃO DE AVALIADORES A PROJETOS (ESCALA)
 // ==============================================================================
